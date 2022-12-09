@@ -1,1 +1,1 @@
-# 8 week SQL challenge
+# 🎯 8 week SQL challenge 🎯
