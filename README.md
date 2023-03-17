@@ -10,7 +10,7 @@ Thanks @DataWithDanny for the interesting SQL case studies! 👋🏻
 * [Case Study #4 - Data Bank](https://github.com/Chicong00/8-Week-SQL-Challenge#case-study-4---data-bank)
 * [Case Study #5 - Data Mart](https://github.com/Chicong00/8-Week-SQL-Challenge#-case-study-5---data-mart)
 * [Case Study #6 - Clique Bait](https://github.com/Chicong00/8-Week-SQL-Challenge#-case-study-6---clique-bait)
-* [Case Study #7 - Balanced Tree Clothing Co.](https://github.com/Chicong00/8-Week-SQL-Challenge#-case-study-7---balanced-tree-clothing-co)
+* [Case Study #7 - Balanced Tree Clothing Co.](#-case-study-7---balanced-tree-clothing-co)
 * [Case Study #8 - Fresh Segments](https://github.com/Chicong00/8-Week-SQL-Challenge#-case-study-8---fresh-segments)
 
 ---
