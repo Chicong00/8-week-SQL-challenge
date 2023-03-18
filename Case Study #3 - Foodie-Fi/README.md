@@ -1,4 +1,4 @@
-# 🥑 Case-study-3: Foodie-Fi
+# 🥑 Case Study 3: Foodie-Fi
 
 ## Table of Contents
 - [Introduction](#Introduction)
