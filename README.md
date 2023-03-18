@@ -38,12 +38,24 @@ View the case study [here](https://github.com/Chicong00/Case-study-2)
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/129742132-8e13c136-adf2-49c4-9866-dec6be0d30f0.png" width="500" height="520" alt="image">
 
+Danny and his friends launched a new startup Foodie-Fi and started selling monthly and annual subscriptions, giving their customers unlimited on-demand access to exclusive food videos from around the world.
+
+This case study focuses on using subscription style digital data to answer important business questions on customer journey, payments, and business performances.
+
 View the case study [here](https://github.com/Chicong00/Case-study-3) 
   
 ---
 ### 🏦 Case Study #4 - Data Bank
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/130343294-a8dcceb7-b6c3-4006-8ad2-fab2f6905258.png" alt="Image" width="500" height="520">
+
+Danny launched a new initiative, Data Bank which runs just like any other digital bank - but it isn’t only for banking activities, they also have the world’s most secure distributed data storage platform!
+
+Customers are allocated cloud data storage limits which are directly linked to how much money they have in their accounts. There are a few interesting caveats that go with this business model, and this is where the Data Bank team need your help!
+
+The management team at Data Bank want to increase their total customer base - but also need some help tracking just how much data storage their customers will need.
+
+This case study is all about calculating metrics, growth and helping the business analyse their data in a smart way to better forecast and plan for their future developments!
 
 View the case study [here](https://github.com/Chicong00/Case-study-4)
   
@@ -52,12 +64,26 @@ View the case study [here](https://github.com/Chicong00/Case-study-4)
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/131437982-fc087a4c-0b77-4714-907b-54e0420e7166.png" alt="Image" width="500" height="520">
 
+Data Mart is an online supermarket that specialises in fresh produce.
+
+In June 2020, large scale supply changes were made at Data Mart. All Data Mart products now use sustainable packaging methods in every single step from the farm all the way to the customer.
+
+Danny needs your help to analyse and quantify the impact of this change on the sales performance for Data Mart and it’s separate business areas.
+
+The key business question to answer are the following:
+
+What was the quantifiable impact of the changes introduced in June 2020?
+Which platform, region, segment and customer types were the most impacted by this change?
+What can we do about future introduction of similar sustainability updates to the business to minimise impact on sales?
+
 View the case study [here](https://github.com/Chicong00/Case-study-5)
   
 ---
 ### 🎣 Case Study #6 - Clique Bait
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/134615258-d1108e0d-0816-4cd7-a972-d45580f82352.png" alt="Image" width="500" height="520">
+
+Clique Bait is an online seafood store. In this case study - you are required to support the founder and CEO Danny’s vision and analyse his dataset and come up with creative solutions to calculate funnel fallout rates for the Clique Bait online store.
 
 View the case study [here](https://github.com/Chicong00/Case-study-6)
   
@@ -72,5 +98,13 @@ View the case study [here](https://github.com/Chicong00/Case-study-7)
 ### 🍒 Case Study #8 - Fresh Segments
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/138843936-d1741a39-9b87-4d5d-b09c-643600e28c92.png" alt="Image" width="500" height="520">
+
+Fresh Segments is a digital marketing agency that helps other businesses analyse trends in online ad click behaviour for their unique customer base.
+
+Clients share their customer lists with the Fresh Segments team who then aggregate interest metrics and generate a single dataset worth of metrics for further analysis.
+
+In particular - the composition and rankings for different interests are provided for each client showing the proportion of their customer list who interacted with online assets related to each interest for each month.
+
+Danny has asked for your assistance to analyse aggregated metrics for an example client and provide some high level insights about the customer list and their interests.
 
 View the case study [here](https://github.com/Chicong00/Case-study-8)
