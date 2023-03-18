@@ -42,7 +42,7 @@ Danny and his friends launched a new startup Foodie-Fi and started selling month
 
 This case study focuses on using subscription style digital data to answer important business questions on customer journey, payments, and business performances.
 
-View the [case study](https://8weeksqlchallenge.com/case-study-3/) and my [solution](https://github.com/Chicong00/8-week-SQL-challenge/blob/ccd48f30b6425194ccad6f4fd534bab078a0edea/Case%20Study%20%233%20-%20Foodie-Fi/SOLUTION.md) 
+View the [case study](https://8weeksqlchallenge.com/case-study-3/) and my [solution](https://github.com/Chicong00/8-week-SQL-challenge/blob/9e659011831e9d46379e16f42d4eba666156fdb8/Case%20Study%20%233%20-%20Foodie-Fi/SOLUTION.md) 
   
 ---
 ### 🏦 Case Study #4 - Data Bank
