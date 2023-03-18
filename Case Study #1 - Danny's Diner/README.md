@@ -52,4 +52,4 @@ Danny has provided you with a sample of his overall customer data due to privacy
 
 ## Solutions
 
-View my solutions [here]()
+View my solutions [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/3ec08195aeba23b4b943a5f6eda1afec5ac00e31/Case%20Study%20%231%20-%20Danny's%20Diner/SOLUTION.md)
