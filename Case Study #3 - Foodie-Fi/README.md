@@ -100,4 +100,4 @@ The following are open ended questions which might be asked during a technical i
 
 ## Solution
 
-View my solution [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/7708e51927bb39b50ab2cba520aa4d81b13b8823/Case%20Study%20%233%20-%20Foodie-Fi/SOLUTION.md)
+View my solution [here]https://github.com/Chicong00/8-week-SQL-challenge/blob/8a27aacc7c323d15f3afc866aecf82c34cb4c9cc/Case%20Study%20%233%20-%20Foodie-Fi/SOLUTION.md)
