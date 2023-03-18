@@ -5,7 +5,7 @@
 - [Problem Statement](#Problem-Statement)
 - [Entity Relationship Diagram](#Entity-Relationship-Diagram)
 - [Case Study Questions](#Case-Study-Questions)
-- [Solutions](#Solutions)
+- [Solution](#Solution)
 
 ***
 
@@ -50,6 +50,6 @@ Danny has provided you with a sample of his overall customer data due to privacy
 11. If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
 12. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
 
-## Solutions
+## Solution
 
 View my solutions [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/3ec08195aeba23b4b943a5f6eda1afec5ac00e31/Case%20Study%20%231%20-%20Danny's%20Diner/SOLUTION.md)
