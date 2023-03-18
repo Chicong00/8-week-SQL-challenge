@@ -68,6 +68,8 @@ select * from #runner_orders_cleaned
 |9	|2	|NULL	|NULL	|NULL	|Customer |Cancellation|
 |10	|1	|2020-01-11 18:50:00	|10	|10	|NULL|
 
+---
+
 ## A. Pizza Metrics
 ### 1. How many pizzas were ordered ?
 ````sql
@@ -240,6 +242,8 @@ GROUP BY format(order_time,'dddd')
 |Monday	|5
 |Saturday	|3|
 |Sunday	|1|
+
+---
 
 ## B. Runner and Customer Experience
 ### 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
