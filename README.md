@@ -31,7 +31,7 @@ Danny is expanding his new Pizza Empire and at the same time, he wants to Uberiz
 
 Danny started by recruiting “runners” to deliver fresh pizza from Pizza Runner Headquarters (otherwise known as Danny’s house) and also maxed out his credit card to pay freelance developers to build a mobile app to accept orders from customers.
 
-View the case study [here](https://github.com/Chicong00/Case-study-2)  
+View the [case study](https://8weeksqlchallenge.com/case-study-2/) and my [solution]() 
   
 ---
 ### 🥑 Case Study #3 - Foodie-Fi
@@ -42,7 +42,7 @@ Danny and his friends launched a new startup Foodie-Fi and started selling month
 
 This case study focuses on using subscription style digital data to answer important business questions on customer journey, payments, and business performances.
 
-View the case study [here](https://github.com/Chicong00/Case-study-3) 
+View the [case study](https://8weeksqlchallenge.com/case-study-3/) and my [solution]() 
   
 ---
 ### 🏦 Case Study #4 - Data Bank
@@ -57,7 +57,7 @@ The management team at Data Bank want to increase their total customer base - bu
 
 This case study is all about calculating metrics, growth and helping the business analyse their data in a smart way to better forecast and plan for their future developments!
 
-View the case study [here](https://github.com/Chicong00/Case-study-4)
+View the [case study](https://8weeksqlchallenge.com/case-study-4/) and my [solution]() 
   
 ---
 ### 🛒 Case Study #5 - Data Mart
@@ -76,7 +76,7 @@ What was the quantifiable impact of the changes introduced in June 2020?
 Which platform, region, segment and customer types were the most impacted by this change?
 What can we do about future introduction of similar sustainability updates to the business to minimise impact on sales?
 
-View the case study [here](https://github.com/Chicong00/Case-study-5)
+View the [case study](https://8weeksqlchallenge.com/case-study-5/) and my [solution]() 
   
 ---
 ### 🎣 Case Study #6 - Clique Bait
@@ -85,14 +85,18 @@ View the case study [here](https://github.com/Chicong00/Case-study-5)
 
 Clique Bait is an online seafood store. In this case study - you are required to support the founder and CEO Danny’s vision and analyse his dataset and come up with creative solutions to calculate funnel fallout rates for the Clique Bait online store.
 
-View the case study [here](https://github.com/Chicong00/Case-study-6)
+View the [case study](https://8weeksqlchallenge.com/case-study-6/) and my [solution]() 
   
 ---
 ### 🌋 Case Study #7 - Balanced Tree Clothing Co.
 <p align="center">
 <img src="https://i.imgur.com/sni3Z5T.png" alt="Image" width="500" height="520">
 
-View the case study [here](https://github.com/Chicong00/Case-study-7)
+Balanced Tree Clothing Company prides themselves on providing an optimised range of clothing and lifestyle wear for the modern adventurer!
+
+Danny, the CEO of this trendy fashion company has asked you to assist the team’s merchandising teams analyse their sales performance and generate a basic financial report to share with the wider business.
+
+View the [case study](https://8weeksqlchallenge.com/case-study-7/) and my [solution]() 
   
 --- 
 ### 🍒 Case Study #8 - Fresh Segments
@@ -107,4 +111,4 @@ In particular - the composition and rankings for different interests are provide
 
 Danny has asked for your assistance to analyse aggregated metrics for an example client and provide some high level insights about the customer list and their interests.
 
-View the case study [here](https://github.com/Chicong00/Case-study-8)
+View the [case study](https://8weeksqlchallenge.com/case-study-8/) and my [solution]() 
