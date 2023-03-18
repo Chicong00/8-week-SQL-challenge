@@ -150,4 +150,4 @@ If Danny wants to expand his range of pizzas - how would this impact the existin
 
 ## Solution
 
-View my solution [here]()
+View my solution [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/5f139aece0ef34e7feb665ecb5f79067f81c3545/Case%20Study%20%232%20-%20Pizza%20Runner/SOLUTION.md)
