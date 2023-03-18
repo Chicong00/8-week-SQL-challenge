@@ -1,4 +1,4 @@
-# 🥑 Foodie-Fi: Solutions
+# 🥑 Foodie-Fi: Solution
 
 💻 Work performed on Azure Data Studio 💻
 
