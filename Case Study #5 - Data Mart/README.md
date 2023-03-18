@@ -114,3 +114,4 @@ Do you have any further recommendations for Danny’s team at Data Mart or any i
 </details>
 
 ## Solution
+View my solution [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/main/Case%20Study%20%235%20-%20Data%20Mart/SOLUTION.md)
