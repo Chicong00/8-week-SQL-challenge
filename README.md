@@ -18,12 +18,18 @@ Thanks @DataWithDanny for the interesting SQL case studies ! 🤝
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/127727503-9d9e7a25-93cb-4f95-8bd0-20b87cb4b459.png" alt="Image" width="500" height="520">
   
-View the case study [here](https://github.com/Chicong00/Case-study-1)
+Danny wants to use the data to answer a few simple questions about his customers, especially about their visiting patterns, how much money they’ve spent and also which menu items are their favourite.  
+  
+View the [case study](https://8weeksqlchallenge.com/case-study-1/) and my [solution](https://github.com/Chicong00/8-week-SQL-challenge/blob/main/Case%20Study%20%231%20-%20Danny's%20Diner/SOLUTION.md). 
 
 ---
 ### 🍕 Case Study #2 - Pizza Runner
 <p align="center">
 <img src="https://user-images.githubusercontent.com/81607668/127271856-3c0d5b4a-baab-472c-9e24-3c1e3c3359b2.png" alt="Image" width="500" height="520">
+
+Danny is expanding his new Pizza Empire and at the same time, he wants to Uberize it, so Pizza Runner was launched!
+
+Danny started by recruiting “runners” to deliver fresh pizza from Pizza Runner Headquarters (otherwise known as Danny’s house) and also maxed out his credit card to pay freelance developers to build a mobile app to accept orders from customers.
 
 View the case study [here](https://github.com/Chicong00/Case-study-2)  
   
