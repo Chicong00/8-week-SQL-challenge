@@ -113,5 +113,5 @@ With the transaction analysis - prepare a 1 page presentation slide which contai
 
 ## Solution 
 
-View my solution [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/0dd8668f836e07d9008205bbaf720c2f9677b702/Case%20Study%20%234%20-%20Data%20Bank/SOLUTION.md)
+View my solution [here](https://github.com/Chicong00/8-week-SQL-challenge/blob/main/Case%20Study%20%234%20-%20Data%20Bank/SOLUTION.md)
 
