@@ -1,4 +1,4 @@
-# 🍕 Pizza Runner: Solutions
+# 🍕 Pizza Runner: Solution
 
 💻 Work performed on Azure Data Studio 💻
 
