@@ -1,4 +1,4 @@
-# 🍜  Case-study-1: Danny's Diner
+# 🍜  Case study 1: Danny's Diner
 
 ## Table of Contents
 - [Introduction](#Introduction)
