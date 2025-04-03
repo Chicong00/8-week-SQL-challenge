@@ -96,7 +96,7 @@ Balanced Tree Clothing Company prides themselves on providing an optimised range
 
 Danny, the CEO of this trendy fashion company has asked you to assist the team’s merchandising teams analyse their sales performance and generate a basic financial report to share with the wider business.
 
-View the [case study](https://8weeksqlchallenge.com/case-study-7/) and my [solution](https://github.com/Chicong00/8-week-SQL-challenge/tree/main/Case%20Study%20%237%20-%20Balanced%20Tree%20Clothing%20Co.) 
+View the [case study](https://8weeksqlchallenge.com/case-study-7/) and my [solution](https://github.com/Chicong00/8-week-SQL-challenge/tree/main/Case%20Study%20%237%20-%20Balanced%20Tree%20Clothing%20Co) 
   
 --- 
 ### 🍒 Case Study #8 - Fresh Segments
