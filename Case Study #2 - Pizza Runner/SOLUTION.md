@@ -263,36 +263,39 @@ ORDER BY EXTRACT(ISODOW FROM order_time);
 ## B. Runner and Customer Experience
 ### 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
 ````sql
-select
-    DATEPART(WEEK,registration_date) registration_week,
-    count(runner_id) runner_count 
-from dbo.runners
-group by DATEPART(WEEK,registration_date)
+SELECT
+  FLOOR((registration_date - DATE '2021-01-01') / 7) + 1 AS week_number,
+  COUNT(*) AS runner_count
+FROM pizza_runner.runners
+GROUP BY 1
+ORDER BY 1;
 ````
 |registration_week|runner_count|
 |---|---|
-|1	|1|
-|2	|2|
+|1	|2|
+|2	|1|
 |3	|1|
+
+Because the week starts 2021-01-01 so I will count the number of days between the `registration_date` and 2021-01-01, then divide by 7 to know the week number, and `+1` to ensure it starts at week 1 for 2021-01-01 to 2021-01-07
 
 ### 2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
 ````sql
 WITH time_taken_cte AS
 (
-  SELECT
+  SELECT 
     c.order_id, 
     c.order_time, 
     r.pickup_time, 
-    DATEDIFF(MINUTE, c.order_time, r.pickup_time) AS pickup_minutes
-  FROM #customer_orders_cleaned AS c
-  JOIN #runner_orders_cleaned AS r
+    extract(epoch from (r.pickup_time - c.order_time))/60 AS pickup_minutes
+  FROM pizza_runner.customer_orders_cleaned AS c
+  JOIN pizza_runner.runner_orders_cleaned AS r
     ON c.order_id = r.order_id
-  WHERE r.cancellation is null 
+  WHERE r.cancellation is null  
   GROUP BY c.order_id, c.order_time, r.pickup_time
 )
- 
-SELECT
-  AVG(pickup_minutes) AS avg_pickup_minutes
+
+SELECT 
+  ceil(AVG(pickup_minutes)) AS avg_pickup_minutes
 FROM time_taken_cte
 WHERE pickup_minutes > 1;
 ````

@@ -141,53 +141,30 @@ ORDER BY EXTRACT(ISODOW FROM order_time); -- ISODOW(ISO-based Day of Week 7 repr
 
 ----- B. Runner and Customer Experience -----
 -- 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
-select * from runners
-
-select 
-    DATEPART(WEEK,registration_date) registration_week,
-    count(runner_id) runner_count 
-from pizza_runner.runners
-group by DATEPART(WEEK,registration_date)
+SELECT
+  FLOOR((registration_date - DATE '2021-01-01') / 7) + 1 AS week_number,
+  COUNT(*) AS runner_count
+FROM pizza_runner.runners
+GROUP BY 1
+ORDER BY 1;
 
 -- 2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
-SELECT * from pizza_runner.runner_orders
-
-select 
-    c.order_id,
-    order_time,
-    pickup_time,
-    AVG(DATEDIFF(MINUTE,order_time,pickup_time))
-from pizza_runner.runner_orders_cleaned r 
-join pizza_runner.customer_orders_cleaned c 
-on r.order_id = c.order_id 
-where cancellation is NULL 
-GROUP by c.order_id, order_time,pickup_time
-
-SELECT 
-	r.runner_id,
-	AVG(DATEDIFF(MINUTE, c.order_time, r.pickup_time)) AS avg_time_to_hq
-FROM   
-	runner_orders_cleaned r,
-	pizza_runner.customer_orders_cleaned c
-WHERE c.order_id = r.order_id
-GROUP  BY r.runner_id;
-
 WITH time_taken_cte AS
 (
   SELECT 
     c.order_id, 
     c.order_time, 
     r.pickup_time, 
-    DATEDIFF(MINUTE, c.order_time, r.pickup_time) AS pickup_minutes
+    extract(epoch from (r.pickup_time - c.order_time))/60 AS pickup_minutes
   FROM pizza_runner.customer_orders_cleaned AS c
-  JOIN runner_orders_cleaned AS r
+  JOIN pizza_runner.runner_orders_cleaned AS r
     ON c.order_id = r.order_id
   WHERE r.cancellation is null  
   GROUP BY c.order_id, c.order_time, r.pickup_time
 )
 
 SELECT 
-  AVG(pickup_minutes) AS avg_pickup_minutes
+  ceil(AVG(pickup_minutes)) AS avg_pickup_minutes
 FROM time_taken_cte
 WHERE pickup_minutes > 1;
 
