@@ -6,67 +6,85 @@
 
 ### Cleaning & Transformations
 ````sql
--- customer_orders_cleaned
-SELECT
-    order_id,
-    customer_id,
-    pizza_id,
-    CASE
-        WHEN exclusions = 'null' THEN null
-        ELSE exclusions
-    END as exclusions,
-    CASE
-        WHEN extras = 'null' OR extras = 'NaN' THEN null
-        ELSE extras
-    END as extras,
-    order_time
-INTO #customer_orders_cleaned
-FROM customer_orders 
- 
-select * from #customer_orders_cleaned
+-- Create customer_orders_cleaned view
+DROP VIEW IF EXISTS pizza_runner.customer_orders_cleaned;
+CREATE VIEW pizza_runner.customer_orders_cleaned as 
+    SELECT
+        order_id,
+        customer_id,
+        pizza_id,
+        CASE 
+            WHEN exclusions in ('','null', 'NaN') THEN null
+            ELSE exclusions
+        END as exclusions,
+        CASE
+            WHEN extras in ('','null', 'NaN') THEN null
+            ELSE extras
+        END as extras,
+        CAST(order_time AS TIMESTAMP) as order_time -- Convert to timestamp for order_time
+    FROM pizza_runner.customer_orders;
+
+select * from pizza_runner.customer_orders_cleaned;
+
 ````
-|order_id|customer_id|pizza_id|exclusions|extras|order_time|
-|---|---|---|---|---|---|
-|1	|101	|1	|NULL	|NULL	|2021-01-01 18:05:00|
-|2	|101	|1	|NULL	|NULL	|2021-01-01 19:00:00|
-|3	|102	|1	|NULL	|NULL	|2021-01-02 23:51:00|
-|3	|102	|2	|NULL	|NULL	|2021-01-02 23:51:00|
-|4	|103	|1	|4	|NULL	|2021-01-04 13:23:00|
-|4	|103	|1	|4	|NULL	|2021-01-04 13:23:00|
-|4	|103	|2	|4	|NULL	|2021-01-04 13:23:00|
-|5	|104	|1	|NULL	|1	|2021-01-08 21:00:00|
-|6	|101	|2	|NULL	|NULL	|2021-01-08 21:03:00|
-|7	|105	|2	|NULL	|1	|2021-01-08 21:20:00|
-|8	|102	|1	|NULL	|NULL	|2021-01-09 23:54:00|
-|9	|103	|1	|4	|1, 5	|2021-01-10 11:22:00|
-|10	|104	|1	|NULL	|NULL	|2021-01-11 18:34:00|
-|10	|104	|1	|2, 6	|1, 4	|2021-01-11 18:34:00|
+| order_id | customer_id | pizza_id | exclusions | extras | order_time          |
+|----------|-------------|----------|------------|--------|---------------------|
+| 1        | 101         | 1        | NULL       | NULL   | 2020-01-01 18:05:02 |
+| 2        | 101         | 1        | NULL       | NULL   | 2020-01-01 19:00:52 |
+| 3        | 102         | 1        | NULL       | NULL   | 2020-01-02 23:51:23 |
+| 3        | 102         | 2        | NULL       | NULL   | 2020-01-02 23:51:23 |
+| 4        | 103         | 1        | 4          | NULL   | 2020-01-04 13:23:46 |
+| 4        | 103         | 1        | 4          | NULL   | 2020-01-04 13:23:46 |
+| 4        | 103         | 2        | 4          | NULL   | 2020-01-04 13:23:46 |
+| 5        | 104         | 1        | NULL       | 1      | 2020-01-08 21:00:29 |
+| 6        | 101         | 2        | NULL       | NULL   | 2020-01-08 21:03:13 |
+| 7        | 105         | 2        | NULL       | 1      | 2020-01-08 21:20:29 |
+| 8        | 102         | 1        | NULL       | NULL   | 2020-01-09 23:54:33 |
+| 9        | 103         | 1        | 4          | 1, 5   | 2020-01-10 11:22:59 |
+| 10       | 104         | 1        | NULL       | NULL   | 2020-01-11 18:34:49 |
+| 10       | 104         | 1        | 2, 6       | 1, 4   | 2020-01-11 18:34:49 |
 
 ````sql
--- runner_orders_cleaned
-select
-    order_id, runner_id, pickup_time, distance_km, duration_mins,
-    case
-    when cancellation = '0' then null
-    else cancellation
-    end as cancellation
-into #runner_orders_cleaned
-from runner_orders
- 
-select * from #runner_orders_cleaned
+-- Create runner_orders_cleaned view and change data types for pickup_time, distance, duration, and cancellation columns
+DROP VIEW IF EXISTS pizza_runner.runner_orders_cleaned;
+CREATE VIEW pizza_runner.runner_orders_cleaned AS 
+    SELECT 
+        order_id,
+        runner_id,
+        CASE 
+            WHEN pickup_time IN ('', 'NaN', 'null') THEN NULL
+            ELSE CAST(pickup_time AS TIMESTAMP) -- Convert to timestamp for pickup_time
+        END AS pickup_time,
+        -- Clean distance column - extract numeric value only
+        CASE 
+            WHEN distance IN ('', 'NaN', 'null') THEN NULL 
+            ELSE CAST(TRIM(REGEXP_REPLACE(distance, '[^0-9\.]', '', 'g')) AS FLOAT) -- Convert to float for distance in km
+        END AS distance_km,
+        -- Clean duration column - extract numeric value only
+        CASE 
+            WHEN duration IN ('', 'NaN', 'null') THEN NULL 
+            ELSE CAST(TRIM(REGEXP_REPLACE(duration, '[^0-9]', '', 'g')) AS INT) -- Convert to int for duration in minutes
+        END AS duration_mins,
+        CASE 
+            WHEN cancellation IN ('', 'NaN', 'null') THEN NULL 
+            ELSE CAST(cancellation AS VARCHAR(50))
+        END AS cancellation
+    FROM pizza_runner.runner_orders;
+
+select * from pizza_runner.runner_orders_cleaned;
 ````
-|order_id|runner_id|pickup_time|distance_km|duration_mins|cancellation|
-|---|---|---|---|---|---|					
-|1	|1	|2021-01-01 18:15:00	|20	|32	|NULL|
-|2	|1	|2021-01-01 19:10:00	|20	|27	|NULL|
-|3	|1	|2021-01-03 00:12:00	|13,4	|20	|NULL|
-|4	|2	|2021-01-04 13:53:00	|23,4	|40	|NULL|
-|5	|3	|2021-01-08 21:10:00	|10	|15	|NULL|
-|6	|3	|NULL	|NULL	|NULL	|Restaurant Cancellation|
-|7	|2	|2020-01-08 21:30:00	|25	|25	|NULL|
-|8	|2	|2020-01-10 00:15:00	|23,4	|15	|NULL|
-|9	|2	|NULL	|NULL	|NULL	|Customer |Cancellation|
-|10	|1	|2020-01-11 18:50:00	|10	|10	|NULL|
+| order_id | runner_id | pickup_time         | distance_km | duration_mins | cancellation            |
+| -------- | --------- | ------------------- | ----------- | ------------- | ----------------------- |
+| 1        | 1         | 2020-01-01 18:15:34 | 20          | 32            | NULL                    |
+| 2        | 1         | 2020-01-01 19:10:54 | 20          | 27            | NULL                    |
+| 3        | 1         | 2020-01-03 00:12:37 | 13.4        | 20            | NULL                    |
+| 4        | 2         | 2020-01-04 13:53:03 | 23.4        | 40            | NULL                    |
+| 5        | 3         | 2020-01-08 21:10:57 | 10          | 15            | NULL                    |
+| 6        | 3         | NULL                | NULL        | NULL          | Restaurant Cancellation |
+| 7        | 2         | 2020-01-08 21:30:45 | 25          | 25            | NULL                    |
+| 8        | 2         | 2020-01-10 00:15:02 | 23.4        | 15            | NULL                    |
+| 9        | 2         | NULL                | NULL        | NULL          | Customer Cancellation   |
+| 10       | 1         | 2020-01-11 18:50:20 | 10          | 10            | NULL                    |
 
 ---
 
@@ -74,7 +92,7 @@ select * from #runner_orders_cleaned
 ### 1. How many pizzas were ordered ?
 ````sql
 select count(*) pizza_order_count
-from #customer_orders_cleaned
+from pizza_runner.customer_orders_cleaned;
 ````
 |pizza_order_count|
 |---|
@@ -83,7 +101,7 @@ from #customer_orders_cleaned
 ### 2. How many unique customer orders were made?
 ````sql
 select COUNT(distinct customer_id) customer_order_count
-from #customer_orders_cleaned
+from pizza_runner.customer_orders_cleaned;
 ````
 |customer_order_count|
 |---|
@@ -92,7 +110,7 @@ from #customer_orders_cleaned
 ### 3. How many successful orders were delivered by each runner?
 ````sql
 select count(*) successful_orders
-from #runner_orders_cleaned
+from pizza_runner.runner_orders_cleaned
 where cancellation is NULL
 ````
 |successful_orders|
@@ -101,16 +119,16 @@ where cancellation is NULL
 
 ### 4. How many of each type of pizza was delivered?
 ````sql
-select
+select 
     pizza_name,
     count(*) order_count
-from dbo.#runner_orders_cleaned r 
-join dbo.#customer_orders_cleaned c 
+from pizza_runner.runner_orders_cleaned r 
+join pizza_runner.customer_orders_cleaned c 
 on r.order_id = c.order_id
-join dbo.pizza_names p 
+join pizza_runner.pizza_names p 
 on c.pizza_id = p.pizza_id 
-where cancellation is NULL
-group by pizza_name
+where cancellation is NULL 
+group by pizza_name;
 ````
 |pizza_name	|order_count|
 |---|---|
@@ -119,15 +137,15 @@ group by pizza_name
 
 ### 5. How many Vegetarian and Meatlovers were ordered by each customer?
 ````sql
-SELECT
+SELECT 
     customer_id,
     pizza_name,
     count(*) order_count
-from dbo.#customer_orders_cleaned c 
-join dbo.pizza_names p 
+from pizza_runner.customer_orders_cleaned c 
+join pizza_runner.pizza_names p 
 on c.pizza_id = p.pizza_id
 group by customer_id,pizza_name
-order by customer_id
+order by customer_id;
 ````
 |customer_id|pizza_name|order_count|
 |---|---|---|	
@@ -159,34 +177,25 @@ order by pizza_count desc
 |4	|103	|3|
 
 ### 7. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
+
+From my understanding, "change" means the pizza is not the original recipe, and some ingredients will be added (`extras`) or removed (`exclusions`). 
+
+=> If the values in `extras` or `exclusions` are not null -> **Change**  
+
 ````sql
-with cte as
-(
-    select
-        c.customer_id,
-     
-        case
-        when exclusions is null and extras is null then 1 
-        else 0
-        end as no_change
-    ,
-     
-        case
-        when extras is not null or exclusions is not null then 1
-        else 0 
-        end as at_least_1_change
- 
-    from dbo.#customer_orders_cleaned c 
-    join dbo.#runner_orders_cleaned r 
-    on c.order_id =r.order_id
-    where r.cancellation is null
-)
-select
+select 
     customer_id,
-    sum(no_change) no_change,
-    sum(at_least_1_change) at_least_1_change
-from cte 
-group by customer_id
+    sum(case 
+        when exclusions is null and extras is null then 1 
+        else 0 end) as no_change,
+    sum(case 
+        when extras is not null or exclusions is not null then 1
+        else 0 end) as at_least_1_change
+from pizza_runner.customer_orders_cleaned c 
+join pizza_runner.runner_orders_cleaned r 
+on c.order_id =r.order_id
+where r.cancellation is null 
+GROUP BY customer_id;
 ````
 |customer_id|no_change|at_least_1_change|
 |---|---|---|
@@ -198,14 +207,14 @@ group by customer_id
 
 ### 8. How many pizzas were delivered that had both exclusions and extras?
 ````sql
-SELECT
-    customer_id,
-    count(*) pizza_with_exclusions_extras 
-from dbo.#customer_orders_cleaned c 
-join dbo.#runner_orders_cleaned r 
+SELECT 
+    sum(CASE 
+        WHEN exclusions is not null and extras is not null THEN 1 
+        ELSE 0 END) as pizza_with_exclusions_extras
+from pizza_runner.customer_orders_cleaned c 
+join pizza_runner.runner_orders_cleaned r 
 on c.order_id = r.order_id 
-where cancellation is null and exclusions is not NULL and extras is not null
-group by customer_id
+where r.cancellation is null;
 ````
 |customer_id	|pizza_with_exclusions_extras|
 |---|---|
@@ -213,11 +222,12 @@ group by customer_id
 
 ### 9. What was the total volume of pizzas ordered for each hour of the day?
 ````sql
-SELECT
-    datepart(hour,order_time) hour_of_day, 
-    count(pizza_id) total_orders
-from dbo.#customer_orders_cleaned 
-GROUP by datepart(hour,order_time)
+SELECT 
+    date_part('hour',order_time) hour_of_day, 
+    count(order_id) total_orders
+from pizza_runner.customer_orders_cleaned 
+GROUP by date_part('hour',order_time)
+order by 1;
 ````
 |hour_of_day|total_orders|
 |---|---|
@@ -230,18 +240,23 @@ GROUP by datepart(hour,order_time)
 
 ### 10. What was the volume of orders for each day of the week?
 ````sql
-SELECT
-    format(order_time,'dddd') day_of_week,
-    count(pizza_id) total_orders 
-from dbo.#customer_orders_cleaned
-GROUP BY format(order_time,'dddd')
+SELECT 
+    to_char(order_time, 'Day') AS day_of_week,
+    COUNT(order_id) AS total_orders
+FROM pizza_runner.customer_orders_cleaned
+GROUP BY EXTRACT(ISODOW FROM order_time), to_char(order_time, 'Day')
+ORDER BY EXTRACT(ISODOW FROM order_time);
 ````
 |day_of_week|total_orders|
 |---|---|
-|Friday	|5|
-|Monday	|5
-|Saturday	|3|
-|Sunday	|1|
+|Wednesday	|5|
+|Thursday	|3
+|Friday	|1|
+|Saturday	|5|
+
+ **`ISODOW` (ISO-based Day of Week 7 represents Sunday while 1 represents Monday)*
+
+ Including both `ISODOW` and `Day` name ensures accurate grouping and ordering by weekday while still showing the readable name.
 
 ---
 

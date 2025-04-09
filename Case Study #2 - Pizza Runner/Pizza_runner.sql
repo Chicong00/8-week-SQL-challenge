@@ -16,8 +16,7 @@ CREATE VIEW pizza_runner.customer_orders_cleaned as
             ELSE extras
         END as extras,
         order_time
-    FROM pizza_runner.customer_orders
-;
+    FROM pizza_runner.customer_orders;
 
 select * from pizza_runner.customer_orders_cleaned;
 
@@ -56,12 +55,12 @@ from pizza_runner.customer_orders_cleaned;
 
 -- 2. How many unique customer orders were made?
 select COUNT(distinct customer_id) customer_order_count
-from pizza_runner.customer_orders_cleaned
+from pizza_runner.customer_orders_cleaned;
 
 -- 3. How many successful orders were delivered by each runner?
 select count(*) successful_orders
 from pizza_runner.runner_orders_cleaned
-where cancellation is NULL
+where cancellation is NULL;
 
 -- 4. How many of each type of pizza was delivered?
 select 
@@ -73,7 +72,7 @@ on r.order_id = c.order_id
 join pizza_runner.pizza_names p 
 on c.pizza_id = p.pizza_id 
 where cancellation is NULL 
-group by pizza_name
+group by pizza_name;
 
 -- 5. How many Vegetarian and Meatlovers were ordered by each customer?
 SELECT 
@@ -84,79 +83,61 @@ from pizza_runner.customer_orders_cleaned c
 join pizza_runner.pizza_names p 
 on c.pizza_id = p.pizza_id
 group by customer_id,pizza_name
-order by customer_id
+order by customer_id;
 
 -- 6. What was the maximum number of pizzas delivered in a single order?
-with cte as 
-(
-    select 
+with cte as (SELECT 
         order_id,
         customer_id,
-        count(*) pizza_count
+        count(*) pizza_count,
+        dense_rank() over (order by count(*) desc) as rank_pizza_count 
     from pizza_runner.customer_orders_cleaned
-    group by order_id, customer_id    
-)
-select top 1 * from cte
-order by pizza_count desc 
+    group by order_id, customer_id)
+
+SELECT order_id,customer_id,pizza_count FROM cte
+WHERE rank_pizza_count = 1;
+
 
 -- 7. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
-SELECT * from pizza_runner.runner_orders_cleaned
-SELECT * from pizza_runner.customer_orders_cleaned
-
-with cte as
-(
-    select 
-        c.customer_id,
-    
-        case 
-        when exclusions is null and extras is null then 1 
-        else 0
-        end as no_change
-    ,
-    
-        case
-        when extras is not null or exclusions is not null then 1
-        else 0 
-        end as at_least_1_change
-
-    from pizza_runner.customer_orders_cleaned c 
-    join pizza_runner.runner_orders_cleaned r 
-    on c.order_id =r.order_id
-    where r.cancellation is null 
-)
 select 
     customer_id,
-    sum(no_change) no_change,
-    sum(at_least_1_change) at_least_1_change
-from cte 
-group by customer_id
+    sum(case 
+        when exclusions is null and extras is null then 1 
+        else 0 end) as no_change,
+    sum(case 
+        when extras is not null or exclusions is not null then 1
+        else 0 end) as at_least_1_change
+from pizza_runner.customer_orders_cleaned c 
+join pizza_runner.runner_orders_cleaned r 
+on c.order_id =r.order_id
+where r.cancellation is null 
+GROUP BY customer_id;
 
 -- 8. How many pizzas were delivered that had both exclusions and extras?
-
 SELECT 
-    customer_id,
-    count(*) pizza_with_exclusions_extras 
+    sum(CASE 
+        WHEN exclusions is not null and extras is not null THEN 1 
+        ELSE 0 END) as pizza_with_exclusions_extras
 from pizza_runner.customer_orders_cleaned c 
 join pizza_runner.runner_orders_cleaned r 
 on c.order_id = r.order_id 
-where cancellation is null and exclusions is not NULL and extras is not null 
-group by customer_id
+where r.cancellation is null;
 
 -- 9. What was the total volume of pizzas ordered for each hour of the day?
-
 SELECT 
-    datepart(hour,order_time) hour_of_day, 
-    count(pizza_id) total_orders
+    date_part('hour',order_time) hour_of_day, 
+    count(order_id) total_orders
 from pizza_runner.customer_orders_cleaned 
-GROUP by datepart(hour,order_time)
+GROUP by date_part('hour',order_time)
+order by 1;
 
 -- 10. What was the volume of orders for each day of the week?
-SELECT
-    format(order_time,'dddd') day_of_week,
-    count(pizza_id)
-from pizza_runner.customer_orders_cleaned
-GROUP BY format(order_time,'dddd')
-
+SELECT 
+    to_char(order_time, 'Day') AS day_of_week,
+    COUNT(order_id) AS total_orders
+FROM pizza_runner.customer_orders_cleaned
+GROUP BY EXTRACT(ISODOW FROM order_time), to_char(order_time, 'Day')
+ORDER BY EXTRACT(ISODOW FROM order_time); -- ISODOW(ISO-based Day of Week 7 represents Sunday while 1 represents Monday)
 
 ----- B. Runner and Customer Experience -----
 -- 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
