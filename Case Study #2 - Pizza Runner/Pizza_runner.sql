@@ -169,9 +169,57 @@ FROM time_taken_cte
 WHERE pickup_minutes > 1;
 
 -- 3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
+SELECT
+  pizza_count,
+  Floor(AVG(EXTRACT(EPOCH FROM (sub.pickup_time - sub.order_time)) / 60)) AS avg_prep_time_mins
+FROM (
+  SELECT
+    c.order_id,
+    COUNT(c.order_id) AS pizza_count,
+    c.order_time,
+    r.pickup_time
+  FROM pizza_runner.customer_orders_cleaned AS c
+  JOIN pizza_runner.runner_orders_cleaned AS r
+    ON c.order_id = r.order_id
+  WHERE r.cancellation IS NULL
+  GROUP BY c.order_id, c.order_time, r.pickup_time
+) AS sub
+GROUP BY pizza_count
+ORDER BY pizza_count;
+
 -- 4. What was the average distance travelled for each customer?
+SELECT
+    c.customer_id,
+    ROUND(AVG(r.distance_km)::numeric, 2) AS avg_distance_km
+FROM pizza_runner.runner_orders_cleaned AS r
+JOIN pizza_runner.customer_orders_cleaned AS c
+  ON r.order_id = c.order_id
+WHERE r.cancellation IS NULL
+GROUP BY 1;
+
 -- 5. What was the difference between the longest and shortest delivery times for all orders?
+SELECT 
+    MAX(r.duration_mins) AS max_delivery_time,
+    MIN(r.duration_mins) AS min_delivery_time,    
+    MAX(r.duration_mins) - MIN(r.duration_mins) AS delivery_time_difference
+FROM pizza_runner.runner_orders_cleaned AS r
+WHERE r.duration_mins IS not NULL;
+
 -- 6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
+-- speed = distance / time
+SELECT 
+  r.runner_id, 
+  COUNT(r.order_id) order_count,
+  distance_km,
+  duration_mins,
+  ROUND((r.distance_km/r.duration_mins * 60)::numeric, 2) AS avg_speed_km_per_hour
+FROM pizza_runner.runner_orders_cleaned AS r
+JOIN pizza_runner.customer_orders_cleaned AS c
+  ON r.order_id = c.order_id
+WHERE distance_km is not NULL
+GROUP BY r.runner_id, r.distance_km, r.duration_mins
+ORDER BY r.runner_id, avg_speed DESC;
+
 -- 7. What is the successful delivery percentage for each runner?
 -- Bài làm -> Sai 
 with not_canceled as 

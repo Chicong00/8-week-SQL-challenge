@@ -295,7 +295,7 @@ WITH time_taken_cte AS
 )
 
 SELECT 
-  ceil(AVG(pickup_minutes)) AS avg_pickup_minutes
+  Ceil(AVG(pickup_minutes)) AS avg_pickup_minutes
 FROM time_taken_cte
 WHERE pickup_minutes > 1;
 ````
@@ -305,88 +305,86 @@ WHERE pickup_minutes > 1;
 
 ### 3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
 ````sql
-WITH Preparation AS (
-  SELECT
-    c.order_id, 
-    c.order_time, 
-    r.pickup_time,
-    DATEDIFF(MINUTE, c.order_time, r.pickup_time) AS prep_time,
-    COUNT(c.pizza_id) AS pizza_count
-  FROM dbo.#customer_orders_cleaned c
-  JOIN dbo.#runner_orders_cleaned  r
-    ON c.order_id = r.order_id
-  WHERE r.cancellation IS NULL
-  GROUP BY c.order_id, c.order_time, r.pickup_time, 
-           DATEDIFF(MINUTE, c.order_time, r.pickup_time)
-)
- 
 SELECT
   pizza_count,
-  AVG(prep_time) AS avg_prep_time
-FROM Preparation
+  Floor(AVG(EXTRACT(EPOCH FROM (sub.pickup_time - sub.order_time)) / 60)) AS avg_prep_time_mins
+FROM (
+  SELECT
+    c.order_id,
+    COUNT(c.order_id) AS pizza_count,
+    c.order_time,
+    r.pickup_time
+  FROM pizza_runner.customer_orders_cleaned AS c
+  JOIN pizza_runner.runner_orders_cleaned AS r
+    ON c.order_id = r.order_id
+  WHERE r.cancellation IS NULL
+  GROUP BY c.order_id, c.order_time, r.pickup_time
+) AS sub
 GROUP BY pizza_count
+ORDER BY pizza_count;
 ````
 |pizza_count|avg_prep_time|
 |---|---|
 |1	|12|
 |2	|18|
-|3	|30|
+|3	|29|
 
 ### 4. What was the average distance travelled for each customer?
 ````sql
 SELECT
     c.customer_id,
-    round(avg(distance_km),2) avg_distance 
-from dbo.#runner_orders_cleaned  r 
-join dbo.#customer_orders_cleaned c
-on r.order_id = c.order_id  
-WHERE distance_km is not NULL
-group by customer_id
+    ROUND(AVG(r.distance_km)::numeric, 2) AS avg_distance_km
+FROM pizza_runner.runner_orders_cleaned AS r
+JOIN pizza_runner.customer_orders_cleaned AS c
+  ON r.order_id = c.order_id
+WHERE r.cancellation IS NULL
+GROUP BY 1;
 ````
 |customer_id|avg_distance|
 |---|---|
-|101	|20|
+|101	|20.00|
 |102	|16.73|
-|103	|23.4|
-|104	|10|
-|105	|25|
+|103	|23.40|
+|104	|10.00|
+|105	|25.00|
 
 ### 5. What was the difference between the longest and shortest delivery times for all orders?
 ````sql
-SELECT
-    MAX(duration_mins) AS max_delivery_time,
-    MIN(duration_mins) AS min_delivery_time,
-    MAX(duration_mins) - MIN(duration_mins) AS time_difference
-FROM dbo.#runner_orders_cleaned
+SELECT 
+    MAX(r.duration_mins) AS max_delivery_time,
+    MIN(r.duration_mins) AS min_delivery_time,    
+    MAX(r.duration_mins) - MIN(r.duration_mins) AS delivery_time_difference
+FROM pizza_runner.runner_orders_cleaned AS r
+WHERE r.duration_mins IS not NULL;
 ````
-|max_delivery_time|min_delivery_time|time_difference|
+|max_delivery_time|min_delivery_time|delivery_time_difference|
 |---|---|---|
 |40	|10	|30|
 
 ### 6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
 ````sql
-select
-    runner_id,
-    COUNT(r.order_id) order_count,
-    distance_km,
-    duration_mins,
-    concat(round(avg(60*distance_km/duration_mins),2),' km/h') speed 
-from dbo.#runner_orders_cleaned r 
-join dbo.#customer_orders_cleaned c 
-on r.order_id = c.order_id
-WHERE duration_mins is not NULL and distance_km is not NULL
-group by runner_id, distance_km,duration_mins
+SELECT 
+  r.runner_id, 
+  COUNT(r.order_id) order_count,
+  distance_km,
+  duration_mins,
+  ROUND((r.distance_km/r.duration_mins * 60)::numeric, 2) AS avg_speed_km_per_hour
+FROM pizza_runner.runner_orders_cleaned AS r
+JOIN pizza_runner.customer_orders_cleaned AS c
+  ON r.order_id = c.order_id
+WHERE distance_km is not NULL
+GROUP BY r.runner_id, r.distance_km, r.duration_mins;
 ````
-|runner_id|order_count|distance_km|duration_mins|speed|
-|---|---|---|---|---|		
-|1	|2	|10	|10	|60 km/h|
-|1	|2	|13.4	|20	|40.2 km/h|
-|1	|1	|20	|27	|44.44 km/h|
-|1	|1	|20	|32	|37.5 km/h|
-|2	|1	|23.4	|15	|93.6 km/h|
-|2	|3	|23.4	|40	|35.1 km/h|
-|2	|1	|25	|25	|60 km/h|
-|3	|1	|10	|15	|40 km/h|
+| runner_id | order_count | distance_km | duration_mins | avg_speed_km_per_hour |
+|-----------|-------------|-------------|---------------|-----------|
+| 1         | 2           | 10          | 10            | 60        |
+| 1         | 1           | 20          | 27            | 44.44     |
+| 1         | 2           | 13.4        | 20            | 40.2      |
+| 1         | 1           | 20          | 32            | 37.5      |
+| 2         | 1           | 23.4        | 15            | 93.6      |
+| 2         | 1           | 25          | 25            | 60        |
+| 2         | 3           | 23.4        | 40            | 35.1      |
+| 3         | 1           | 10          | 15            | 40        |
 
 ### 7. What is the successful delivery percentage for each runner?
 ````sql
