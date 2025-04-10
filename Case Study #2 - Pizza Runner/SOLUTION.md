@@ -460,8 +460,66 @@ ORDER BY pizza_id;
 |
 
 ### 2. What was the most commonly added extra?
+````sql
+with exploded_extras as(
+SELECT
+    order_id,
+    pizza_id,
+    TRIM(UNNEST(STRING_TO_ARRAY(extras, ',')))::INT AS extra_id
+FROM pizza_runner.customer_orders_cleaned
+WHERE extras IS NOT NULL
+), extras_names as(
+SELECT e.*,
+       t.topping_name
+FROM exploded_extras e
+JOIN pizza_runner.pizza_toppings t
+ON e.extra_id = t.topping_id
+), extras_ranked as(
+SELECT
+    topping_name,
+    COUNT(*) AS extra_count,
+    rank() over (ORDER BY COUNT(*) DESC) AS extra_rank
+FROM extras_names
+GROUP BY 1
+)
+SELECT topping_name, extra_count
+FROM extras_ranked
+WHERE extra_rank = 1;
+````
+|topping_name|extra_count|
+|---|---|
+|Bacon|4|
 
 ### 3. What was the most common exclusion?
+````sql
+with exploded_exc as(
+SELECT
+    order_id,
+    pizza_id,
+    TRIM(UNNEST(STRING_TO_ARRAY(exclusions, ',')))::INT AS exc_id
+FROM pizza_runner.customer_orders_cleaned
+WHERE exclusions IS NOT NULL
+), exc_names as(
+SELECT e.*,
+       t.topping_name
+FROM exploded_exc e
+JOIN pizza_runner.pizza_toppings t
+ON e.exc_id = t.topping_id
+), exc_ranked as(
+SELECT
+    topping_name,
+    COUNT(*) AS exclusion_count,
+    rank() over (ORDER BY COUNT(*) DESC) AS exc_rank
+FROM exc_names
+GROUP BY 1
+)
+SELECT topping_name, exclusion_count
+FROM exc_ranked
+WHERE exc_rank = 1;
+````
+|topping_name|exclusion_count|
+|---|---|
+|Cheese|4|
 
 ### 4. Generate an order item for each record in the customers_orders table in the format of one of the following:
 - `Meat Lovers`
