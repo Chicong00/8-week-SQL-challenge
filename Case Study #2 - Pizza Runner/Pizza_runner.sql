@@ -221,63 +221,50 @@ GROUP BY r.runner_id, r.distance_km, r.duration_mins
 ORDER BY r.runner_id, avg_speed DESC;
 
 -- 7. What is the successful delivery percentage for each runner?
--- Bài làm -> Sai 
-with not_canceled as 
-(
-    select
-        runner_id,
-        count(c.order_id) total_orders
-    from pizza_runner.runner_orders_cleaned r 
-    join pizza_runner.customer_orders_cleaned c 
-    on r.order_id = c.order_id
-    group by runner_id 
-),
-canceled as 
-(
-    select
-        runner_id,
-        count(*) successfull_orders
-    from pizza_runner.runner_orders_cleaned r 
-    join pizza_runner.customer_orders_cleaned c 
-    on r.order_id = c.order_id
-    where cancellation is null
-    group by runner_id 
-)    
-select 
-    c.runner_id,
-    total_orders,
-    successfull_orders,
-    convert(float,round((100.0*successfull_orders/total_orders),2)) as successful_delivery
-from not_canceled n 
-join canceled c 
-on n.runner_id = c.runner_id
-
--- Làm lại 
-select 
-    runner_id,
-    COUNT(*) total_orders,
-    sum(
-        case 
-        when cancellation is null then 1 else 0 end) as successful_orders,
-    round((100*sum(
-        case 
-        when cancellation is null then 1 else 0 end)/count(*)),0)
-     as successfull_percentage
-from pizza_runner.runner_orders_cleaned
-group by runner_id
-
-
--- Bài sửa
-SELECT 
-    COUNT(order_id) total_orders,
-    runner_id, 
-    ROUND(100 * SUM(
-    CASE WHEN distance_km is null THEN 0
-    ELSE 1 END) / COUNT(*), 0) AS success_perc
-from pizza_runner.runner_orders_cleaned
-GROUP BY runner_id;
+-- successful delivery percentage = (successful orders / total orders) * 100
+-- succesful orders = orders with no cancellation -> cancellation is null
+-- total orders = all orders (including canceled ones) -> count all orders
+SELECT
+    r.runner_id,
+    COUNT(r.order_id) total_orders,
+    SUM(CASE WHEN r.cancellation IS NULL THEN 1 ELSE 0 END) AS successful_orders,
+    ROUND((100.0 * SUM(CASE WHEN r.cancellation IS NULL THEN 1 ELSE 0 END) / COUNT(r.order_id))::numeric, 2) AS success_pct
+FROM pizza_runner.runner_orders_cleaned AS r
+GROUP BY r.runner_id
+ORDER BY 1, 4 DESC;
 
 ----- C. Ingredient Optimisation -----
+
+-- 1. What are the standard ingredients for each pizza?
+WITH exploded_toppings AS (
+  SELECT
+    pizza_id,
+    TRIM(UNNEST(STRING_TO_ARRAY(toppings, ',')))::INT AS topping_id
+  FROM pizza_runner.pizza_recipes
+),
+pizza_ingredients AS (
+  SELECT
+    e.pizza_id,
+    t.topping_name
+  FROM exploded_toppings e
+  JOIN pizza_runner.pizza_toppings t
+    ON e.topping_id = t.topping_id
+)
+SELECT pizza_id, STRING_AGG(topping_name, ', ' ORDER BY topping_name) AS ingredients
+FROM pizza_ingredients
+GROUP BY pizza_id
+ORDER BY pizza_id;
+
+-- 2. What was the most commonly added extra?
+
+
+-- 3. What was the most common exclusion?
+
+
+
+
+
+
 ----- D. Pricing and Ratings -----
 ----- E. Bonus Questions -----
 

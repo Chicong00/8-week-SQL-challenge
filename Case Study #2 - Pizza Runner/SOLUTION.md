@@ -362,6 +362,9 @@ WHERE r.duration_mins IS not NULL;
 |40	|10	|30|
 
 ### 6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
+
+speed (km/h) = distance (km) / time (hour)
+
 ````sql
 SELECT 
   r.runner_id, 
@@ -387,23 +390,86 @@ GROUP BY r.runner_id, r.distance_km, r.duration_mins;
 | 3         | 1           | 10          | 15            | 40        |
 
 ### 7. What is the successful delivery percentage for each runner?
-````sql
-select
-    runner_id,
-    COUNT(*) total_orders,
-    sum(
-        case
-        when cancellation is null then 1 else 0 end) as successful_orders,
-    round((100*sum(
-        case
-        when cancellation is null then 1 else 0 end)/count(*)),0)
-     as successfull_percentage
-from #runner_orders_cleaned
-group by runner_id
-````
-|runner_id|total_orders|successful_orders|successful_percentage|
-|---|---|---|---|
-|1	|4	|4	|100|
-|2	|4	|3	|75|
-|3	|2	|1	|50|
 
+successful delivery percentage = (successful orders / total orders) * 100
+
+succesful orders = orders with no cancellation -> cancellation is null
+
+total orders = all orders (including canceled ones) -> count all orders
+
+````sql
+SELECT
+    r.runner_id,
+    COUNT(r.order_id) total_orders,
+    SUM(CASE WHEN r.cancellation IS NULL THEN 1 ELSE 0 END) AS successful_orders,
+    ROUND((100.0 * SUM(CASE WHEN r.cancellation IS NULL THEN 1 ELSE 0 END) / COUNT(r.order_id))::numeric, 2) AS success_pct
+FROM pizza_runner.runner_orders_cleaned AS r
+GROUP BY r.runner_id
+ORDER BY 1, 4 DESC;
+````
+|runner_id|total_orders|successful_orders|success_pct|
+|---|---|---|---|
+|1	|4	|4	|100.00|
+|2	|4	|3	|75.00|
+|3	|2	|1	|50.00|
+
+---
+
+## C. Ingredient Optimisation
+### 1. What are the standard ingredients for each pizza?
+Expected output
+
+| pizza_id	| ingredients|
+|--|--|
+|1	|Bacon, BBQ Sauce, Beef, ...|
+|2	|Cheese, Mushrooms, Onions, ... |
+
+**Step 1**: Convert `topping` string in pizza_recipes table into rows to map with `topping_name` by `topping_id` in piiza_toppings table
+- 1.1: Split the `topping` string in pizza_recipes into an array -> STRING_TO_ARRAY()
+- 1.2: Flattens the array into rows. -> UNNEST(ARRAY)
+- 1.3: Ensures spacing/typing is clean and cast to integer for joining. -> TRIM()
+
+**Step 2**: Join the table above with pizza_toppings table to get `topping_name`
+
+**Step 3**: Convert the data in the joined table above to string to get the expected output.
+
+````sql
+WITH exploded_toppings AS (
+  SELECT
+    pizza_id,
+    TRIM(UNNEST(STRING_TO_ARRAY(toppings, ',')))::INT AS topping_id
+  FROM pizza_runner.pizza_recipes
+),
+pizza_ingredients AS (
+  SELECT
+    e.pizza_id,
+    t.topping_name
+  FROM exploded_toppings e
+  JOIN pizza_runner.pizza_toppings t
+    ON e.topping_id = t.topping_id
+)
+SELECT pizza_id, STRING_AGG(topping_name, ', ' ORDER BY topping_name) AS ingredients
+FROM pizza_ingredients
+GROUP BY pizza_id
+ORDER BY pizza_id;
+````
+|pizza_id|ingredients|
+|---|---|
+|1|Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|2|Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes
+|
+
+### 2. What was the most commonly added extra?
+
+### 3. What was the most common exclusion?
+
+### 4. Generate an order item for each record in the customers_orders table in the format of one of the following:
+- `Meat Lovers`
+- `Meat Lovers - Exclude Beef`
+- `Meat Lovers - Extra Bacon`
+- `Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers`
+
+### 5. Generate an alphabetically ordered comma separated ingredient list for each pizza order from the customer_orders table and add a 2x in front of any relevant ingredients
+- For example: `"Meat Lovers: 2xBacon, Beef, ... , Salami"`
+
+### 6. What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?
