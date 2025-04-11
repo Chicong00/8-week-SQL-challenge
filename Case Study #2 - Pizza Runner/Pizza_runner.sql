@@ -307,9 +307,53 @@ SELECT topping_name, exclusion_count
 FROM exc_ranked
 WHERE exc_rank = 1;
 
+-- 6. What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?
+WITH order_toppings AS (
+  -- Extract toppings, exclusions, and extras from customer orders
+  SELECT
+    c.order_id,
+    UNNEST(STRING_TO_ARRAY(p.toppings, ','))::INT AS topping_id,
+    STRING_TO_ARRAY(COALESCE(c.exclusions, ''), ',') AS exclusion_ids,
+    STRING_TO_ARRAY(COALESCE(c.extras, ''), ',') AS extra_ids
+  FROM pizza_runner.customer_orders_cleaned c
+  JOIN pizza_runner.pizza_recipes p
+    ON c.pizza_id = p.pizza_id
+),
+excluded_toppings AS (
+  -- Exclude toppings based on exclusions
+  SELECT
+    order_id,
+    topping_id
+  FROM order_toppings
+  WHERE NOT topping_id::TEXT = ANY(exclusion_ids)
+),
+final_toppings AS (
+  -- Include toppings after exclusions
+  SELECT * FROM excluded_toppings
 
+  UNION ALL
 
-
+  -- Include extras as toppings
+  SELECT
+    order_id,
+    TRIM(extra_id)::INT AS topping_id
+  FROM (
+    SELECT
+      order_id,
+      UNNEST(extra_ids) AS extra_id
+    FROM order_toppings
+  ) AS extras
+  WHERE extra_id <> ''
+)
+-- Count the total uses of each topping
+SELECT
+  t.topping_name,
+  COUNT(*) AS total_uses
+FROM final_toppings f
+JOIN pizza_runner.pizza_toppings t
+  ON f.topping_id = t.topping_id
+GROUP BY t.topping_name
+ORDER BY total_uses DESC;
 
 ----- D. Pricing and Ratings -----
 ----- E. Bonus Questions -----
