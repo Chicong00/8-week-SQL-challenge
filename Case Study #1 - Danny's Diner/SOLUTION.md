@@ -2,7 +2,7 @@
 
 💻 Work performed on Azure Data Studio 💻
 
-[SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/main/Case%20Study%20%231%20-%20Danny's%20Diner/w1_sql_solution.sql)
+[SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/main/Case%20Study%20%231%20-%20Danny's%20Diner/Danny_dinner.sql)
 
 ### 1. What is the total amount each customer spent at the restaurant?
 ````sql
