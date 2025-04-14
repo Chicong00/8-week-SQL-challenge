@@ -1,27 +1,27 @@
-select * from dbo.plans
-select * from dbo.subscriptions
+select * from foodie_fi.plans
+select * from foodie_fi.subscriptions
 
 ----- A. CUSTOMER JOURNEY -----
 --Based off the 8 sample customers provided in the sample from the subscriptions table, 
 --write a brief description about each customer’s onboarding journey.
 select s.*,p.plan_name,p.price
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id 
 where customer_id in (1,4,6,23,49,58,79,80)
-order by customer_id
+order by customer_id;
 
 ----- B. DATA ANALYSIS QUESTIONS -----
 --1. How many customers has Foodie-Fi ever had?
 select count(distinct(customer_id)) customer_count
-from dbo.subscriptions
+from foodie_fi.subscriptions
 
 --2. What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
 select 
     MONTH(start_date) month, 
     count(distinct customer_id) trial_subs
-from dbo.subscriptions s 
-join dbo.plans p  
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p  
 on s.plan_id = p.plan_id 
 where plan_name = 'trial'
 group by month(start_date)
@@ -32,8 +32,8 @@ group by month(start_date)
 SELECT 
     plan_name,
     count(1) event_count_2021
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id
 where year(start_date) >= 2021
 group by plan_name
@@ -42,8 +42,8 @@ order by event_count_2021
 SELECT 
     plan_name,
     count(1) event_count_2020
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id
 where year(start_date) < 2021
 group by plan_name
@@ -55,8 +55,8 @@ from
    SELECT 
     plan_name,
     count(1) event_count_2020
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id
 where year(start_date) < 2021
 group by plan_name 
@@ -66,8 +66,8 @@ left join
     SELECT 
     plan_name,
     count(1) event_count_2021
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id
 where year(start_date) >= 2021
 group by plan_name
@@ -80,8 +80,8 @@ with event21 AS
   SELECT 
     plan_name,
     count(1) event_count_2021
-  from dbo.subscriptions s 
-  join dbo.plans p 
+  from foodie_fi.subscriptions s 
+  join foodie_fi.plans p 
   on s.plan_id = p.plan_id
   where year(start_date) >= 2021
   group by plan_name
@@ -92,8 +92,8 @@ event20 AS
   SELECT 
     plan_name,
     count(1) event_count_2020
-  from dbo.subscriptions s 
-  join dbo.plans p 
+  from foodie_fi.subscriptions s 
+  join foodie_fi.plans p 
   on s.plan_id = p.plan_id
   where year(start_date) < 2021
   group by plan_name
@@ -113,14 +113,14 @@ Lấy ra customer có plan là 'churn' sau đó tính % của churn / tổng s�
 
 with churned_cte as
 (select distinct s.*,plan_name
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id 
 where plan_name = 'churn')
 
 select 
     count(*) churn_count,
-    convert(float,round((100.0*count(distinct customer_id)/(select count(distinct customer_id) from dbo.subscriptions)),2)) as churn_percentage
+    convert(float,round((100.0*count(distinct customer_id)/(select count(distinct customer_id) from foodie_fi.subscriptions)),2)) as churn_percentage
 from churned_cte
 
 --5. How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
@@ -130,13 +130,13 @@ Tạo thêm cột ranking của mỗi customer theo thứ tự order_date, từ 
 with ranking AS
 (SELECT  s.*,plan_name,
     ROW_NUMBER() over (partition by customer_id order by start_date) rank_
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id)
  
 select
     count(*) churn_count,
-    round(100*count(*) / (select count(distinct customer_id) from dbo.subscriptions),0) churn_percentage
+    round(100*count(*) / (select count(distinct customer_id) from foodie_fi.subscriptions),0) churn_percentage
 from ranking
 where plan_name = 'churn' and rank_= 2
 
@@ -156,15 +156,15 @@ SELECT
   ROW_NUMBER() OVER (
     PARTITION BY s.customer_id 
     ORDER BY s.plan_id) AS plan_rank 
-FROM dbo.subscriptions s
-JOIN dbo.plans p
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p
   ON s.plan_id = p.plan_id)
   
 SELECT 
   COUNT(*) AS churn_count,
   ROUND(100 * COUNT(*) / (
     SELECT COUNT(DISTINCT customer_id) 
-    FROM dbo.subscriptions),0) AS churn_percentage
+    FROM foodie_fi.subscriptions),0) AS churn_percentage
 FROM ranking
 WHERE plan_id = 4 -- Filter to churn plan
   AND plan_rank = 2 -- Filter to rank 2 as customers who churned immediately after trial have churn plan ranked as 2
@@ -178,14 +178,14 @@ with ranking AS
 (SELECT  
     s.*,plan_name,
     ROW_NUMBER() over (partition by customer_id order by start_date) rank_
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id)
  
 select
     plan_name next_plan,
     count(*) plan_count,
-    convert(float,round(100.0*count(*) / (select count(distinct customer_id) from dbo.subscriptions),2)) plan_percentage
+    convert(float,round(100.0*count(*) / (select count(distinct customer_id) from foodie_fi.subscriptions),2)) plan_percentage
 from ranking
 where 
         plan_name = 'churn' and rank_= 2
@@ -204,14 +204,14 @@ SELECT
   LEAD(plan_id, 1) OVER( -- Offset by 1 to retrieve the immediate row's value below 
     PARTITION BY customer_id 
     ORDER BY plan_id) as next_plan
-FROM dbo.subscriptions)
+FROM foodie_fi.subscriptions)
 
 SELECT 
   next_plan, 
   COUNT(*) AS conversions,
   ROUND(100.0 * COUNT(*) / (
     SELECT COUNT(DISTINCT customer_id) 
-    FROM dbo.subscriptions),1) AS conversion_percentage
+    FROM foodie_fi.subscriptions),1) AS conversion_percentage
 FROM next_plan_cte
 WHERE next_plan IS NOT NULL 
   AND plan_id = 0
@@ -229,8 +229,8 @@ with cte as
     s.*,
     plan_name,
     price
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id 
 where start_date <= '2020-12-30')
 
@@ -258,7 +258,7 @@ WITH ranked AS
 SELECT 
   plan_name,
   count(*) customer_count, 
-  convert(float,ROUND((100.0*count(*)/(select count(distinct customer_id) from dbo.subscriptions)),2)) percentage_of_plans
+  convert(float,ROUND((100.0*count(*)/(select count(distinct customer_id) from foodie_fi.subscriptions)),2)) percentage_of_plans
 from ranked 
 WHERE rank = 1
 group by plan_name
@@ -274,7 +274,7 @@ SELECT
   plan_id, 
   start_date,
   LEAD(start_date, 1) OVER(PARTITION BY customer_id ORDER BY start_date) as next_date
-FROM dbo.subscriptions
+FROM foodie_fi.subscriptions
 WHERE start_date <= '2020-12-31'),
 -- To find breakdown of customers with existing plans on or after 31 Dec 2020
 customer_breakdown AS (
@@ -287,7 +287,7 @@ customer_breakdown AS (
 SELECT plan_id, customers, 
   ROUND(100.0 * customers / (
     SELECT COUNT(DISTINCT customer_id) 
-    FROM dbo.subscriptions),1) AS percentage
+    FROM foodie_fi.subscriptions),1) AS percentage
 FROM customer_breakdown
 GROUP BY plan_id, customers
 ORDER BY plan_id
@@ -297,8 +297,8 @@ có bao nhiêu customer nâng cấp lên plan pro annual trong năm 2020
 
 SELECT 
     count(distinct customer_id) pro_annual_customers
-from dbo.subscriptions s  
-join dbo.plans p 
+from foodie_fi.subscriptions s  
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id
 where plan_name = 'pro annual' and YEAR(start_date) = 2020
 
@@ -311,13 +311,13 @@ thời gian trung bình (tính theo ngày) mà 1 customer đăng ký plan pro an
 with annual AS
 (
 select customer_id, start_date annual_date
-from dbo.subscriptions
+from foodie_fi.subscriptions
 where plan_id = 3
 ), 
 trial as 
 (
 select customer_id, start_date trial_date
-from dbo.subscriptions
+from foodie_fi.subscriptions
 where plan_id = 0
 )
 
@@ -331,13 +331,13 @@ on t.customer_id = a.customer_id
 with annual AS
 (
 select customer_id, start_date annual_date
-from dbo.subscriptions
+from foodie_fi.subscriptions
 where plan_id = 3
 )
 
 select 
     round(AVG(DATEDIFF(day,start_date,annual_date)),0) avg_days_to_annual  -- sai vì start_date này sẽ tính bao hàm luôn start_date ở plan annual mà customer đky khi đó khoảng thgian sẽ không chính xác nếu lấy 2 mốc date trừ nhau
-from dbo.subscriptions s  
+from foodie_fi.subscriptions s  
 join annual a 
 on s.customer_id = a.customer_id
 
@@ -347,7 +347,7 @@ WITH trial_plan AS
 (SELECT 
   customer_id, 
   start_date AS trial_date
-FROM dbo.subscriptions
+FROM foodie_fi.subscriptions
 WHERE plan_id = 0
 ),
 -- Filter results to customers at pro annual plan = 3
@@ -355,7 +355,7 @@ annual_plan AS
 (SELECT 
   customer_id, 
   start_date AS annual_date
-FROM dbo.subscriptions
+FROM foodie_fi.subscriptions
 WHERE plan_id = 3
 )
 
@@ -413,8 +413,8 @@ with ranking AS
 (SELECT  
     s.*,plan_name,
     ROW_NUMBER() over (partition by customer_id order by start_date) rank_
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id)
 
 select count(*) downgraded
@@ -431,7 +431,7 @@ SELECT
   plan_id, 
   start_date,
   LEAD(plan_id, 1) OVER(PARTITION BY customer_id ORDER BY plan_id) as next_plan
-FROM dbo.subscriptions)
+FROM foodie_fi.subscriptions)
 
 SELECT 
   COUNT(*) AS downgraded
@@ -460,7 +460,7 @@ with cte as
     YEAR(s.start_date) year,
     COUNT(distinct customer_id) current_customer_count,
     lag(COUNT(distinct customer_id),1) over(order by month(s.start_date)) past_customer_count
-  from dbo.subscriptions s 
+  from foodie_fi.subscriptions s 
   where year(start_date) < 2021 and plan_id != 0 and plan_id != 4
   group by YEAR(s.start_date), MONTH(s.start_date)
 )
@@ -477,7 +477,7 @@ with cte as
     YEAR(s.start_date) year,
     COUNT(distinct customer_id) current_customer_count,
     lag(COUNT(distinct customer_id),1) over(order by year(start_date),month(s.start_date)) past_customer_count
-  from dbo.subscriptions s 
+  from foodie_fi.subscriptions s 
   where plan_id != 0 and plan_id != 4
   group by YEAR(s.start_date), MONTH(s.start_date)
   --order by [year],[month]

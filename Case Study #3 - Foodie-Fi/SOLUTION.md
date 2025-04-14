@@ -1,7 +1,5 @@
 # 🥑 Foodie-Fi: Solution
 
-💻 Work performed on Azure Data Studio 💻
-
 [SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/0dd8668f836e07d9008205bbaf720c2f9677b702/Case%20Study%20%233%20-%20Foodie-Fi/Foodie-Fi.sql)
 
 <details>
