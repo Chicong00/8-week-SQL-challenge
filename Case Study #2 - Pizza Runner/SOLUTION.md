@@ -1,7 +1,5 @@
 # 🍕 Pizza Runner: Solution
 
-💻 Work performed on Azure Data Studio 💻
-
 [SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/cb3a4a4c864ef48dc11aa08ac2bad6292b99e9c2/Case%20Study%20%232%20-%20Pizza%20Runner/Pizza_runner.sql)
 
 ## Cleaning & Transformations
