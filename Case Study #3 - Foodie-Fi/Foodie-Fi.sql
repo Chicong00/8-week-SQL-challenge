@@ -14,97 +14,50 @@ order by customer_id;
 ----- B. DATA ANALYSIS QUESTIONS -----
 --1. How many customers has Foodie-Fi ever had?
 select count(distinct(customer_id)) customer_count
-from foodie_fi.subscriptions
+from foodie_fi.subscriptions;
 
 --2. What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
-select 
-    MONTH(start_date) month, 
+select
+    EXTRACT(month from start_date) month_number,
     count(distinct customer_id) trial_subs
 from foodie_fi.subscriptions s 
 join foodie_fi.plans p  
 on s.plan_id = p.plan_id 
 where plan_name = 'trial'
-group by month(start_date)
+group by EXTRACT(month from start_date);
 
 --3.What plan start_date values occur after the year 2020 for our dataset? 
 --Show the breakdown by count of events for each plan_name
-
-SELECT 
-    plan_name,
-    count(1) event_count_2021
-from foodie_fi.subscriptions s 
-join foodie_fi.plans p 
-on s.plan_id = p.plan_id
-where year(start_date) >= 2021
-group by plan_name
-order by event_count_2021
-
-SELECT 
-    plan_name,
-    count(1) event_count_2020
-from foodie_fi.subscriptions s 
-join foodie_fi.plans p 
-on s.plan_id = p.plan_id
-where year(start_date) < 2021
-group by plan_name
-order by event_count_2020
-
-select #20_.plan_name, event_count_2020, event_count_2021 
-from 
-(
-   SELECT 
-    plan_name,
-    count(1) event_count_2020
-from foodie_fi.subscriptions s 
-join foodie_fi.plans p 
-on s.plan_id = p.plan_id
-where year(start_date) < 2021
-group by plan_name 
-) #20_
-left join
-(
-    SELECT 
-    plan_name,
-    count(1) event_count_2021
-from foodie_fi.subscriptions s 
-join foodie_fi.plans p 
-on s.plan_id = p.plan_id
-where year(start_date) >= 2021
-group by plan_name
-) #21_
-on #20_.plan_name = #21_.plan_name
-order by event_count_2020 DESC
-
-with event21 AS
-(
+with event21 AS (
   SELECT 
     plan_name,
-    count(1) event_count_2021
-  from foodie_fi.subscriptions s 
-  join foodie_fi.plans p 
-  on s.plan_id = p.plan_id
-  where year(start_date) >= 2021
-  group by plan_name
-  --order by event_count_2021
+    count(1) as event_count_2021
+  FROM foodie_fi.subscriptions s 
+  JOIN foodie_fi.plans p 
+    ON s.plan_id = p.plan_id
+  WHERE EXTRACT(YEAR FROM start_date) >= 2021
+  GROUP BY plan_name
 ),
-event20 AS
-(
+event20 AS (
   SELECT 
     plan_name,
-    count(1) event_count_2020
-  from foodie_fi.subscriptions s 
-  join foodie_fi.plans p 
-  on s.plan_id = p.plan_id
-  where year(start_date) < 2021
-  group by plan_name
-  --order by event_count_2020
+    count(1) as event_count_2020
+  FROM foodie_fi.subscriptions s 
+  JOIN foodie_fi.plans p 
+    ON s.plan_id = p.plan_id
+  WHERE EXTRACT(YEAR FROM start_date) < 2021
+  GROUP BY plan_name
 )
 
-select event20.plan_name, event_count_2020, event_count_2021 
-from event20 
-left join event21 
-on event20.plan_name = event21.plan_name
-order by event_count_2020 DESC
+SELECT 
+  event20.plan_name, 
+  event_count_2020, 
+  event_count_2021 
+FROM event20 
+LEFT JOIN event21 
+  ON event20.plan_name = event21.plan_name
+ORDER BY event_count_2020 DESC;
+
 
 
 --4. What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
