@@ -4,7 +4,7 @@
 
 [SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/cb3a4a4c864ef48dc11aa08ac2bad6292b99e9c2/Case%20Study%20%232%20-%20Pizza%20Runner/Pizza_runner.sql)
 
-### Cleaning & Transformations
+## Cleaning & Transformations
 ````sql
 -- Create customer_orders_cleaned view
 DROP VIEW IF EXISTS pizza_runner.customer_orders_cleaned;
