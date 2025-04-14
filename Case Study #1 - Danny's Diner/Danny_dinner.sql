@@ -6,7 +6,8 @@ select
 from dannys_diner.sales as s 
 join dannys_diner.menu as m
 on s.product_id = m.product_id
-group by s.customer_id;
+group by s.customer_id
+order by 2 desc;
 
 -- 2. How many days has each customer visited the restaurant?
 
@@ -76,7 +77,8 @@ from
   WHERE order_date >= join_date) temp 
 join dannys_diner.menu m2
 on temp.product_id = m2.product_id
-WHERE temp.rank = 1;
+WHERE temp.rank = 1
+order by 3 asc;
 
 -- 7. Which item was purchased just before the customer became a member?
 
@@ -91,7 +93,8 @@ from
   WHERE order_date < join_date) temp 
 join dannys_diner.menu m2
 on temp.product_id = m2.product_id
-WHERE temp.rank = 1;
+WHERE temp.rank = 1
+order by 3;
 
 -- 8. What is the total items and amount spent for each member before they became a member?
 
@@ -126,9 +129,11 @@ SELECT
   customer_id, 
   sum(p.points) total_points
 from cte as p 
-GROUP by customer_id;
+GROUP by customer_id
+ORDER BY 2 desc;
 
--- 10. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+-- 10. In the first week after a customer joins the program (including their join date) 
+--they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
 
 select customer_id, sum(points) total_points
 from (
@@ -140,7 +145,7 @@ select customer_id,day_count,
     end as points 
 from  (select 
   s.customer_id,product_id, join_date, order_date,
-  CONVERT(FLOAT, DATEDIFF(DAY,join_date,order_date)) day_count
+  (order_date - join_date) AS day_count
 from dannys_diner.sales s 
 join dannys_diner.members m1 
 on s.customer_id = m1.customer_id) p_
