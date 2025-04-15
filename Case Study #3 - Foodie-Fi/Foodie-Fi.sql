@@ -61,9 +61,7 @@ ORDER BY event_count_2020 DESC;
 
 
 --4. What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
-
-Lấy ra customer có plan là 'churn' sau đó tính % của churn / tổng số customer 
-
+--customer with "churn" / total customer 
 with churned_cte as
 (select distinct s.*,plan_name
 from foodie_fi.subscriptions s 
@@ -73,13 +71,10 @@ where plan_name = 'churn')
 
 select 
     count(*) churn_count,
-    convert(float,round((100.0*count(distinct customer_id)/(select count(distinct customer_id) from foodie_fi.subscriptions)),2)) as churn_percentage
-from churned_cte
+    CAST(round((100.0*count(distinct customer_id)/(select count(distinct customer_id) from foodie_fi.subscriptions)),1) as FLOAT) as churn_percentage
+from churned_cte;
 
 --5. How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
-
-Tạo thêm cột ranking của mỗi customer theo thứ tự order_date, từ đó lấy ra những customer có plan_id = 4 ranking = 2
--- Bài làm -> ĐÚNG
 with ranking AS
 (SELECT  s.*,plan_name,
     ROW_NUMBER() over (partition by customer_id order by start_date) rank_
@@ -91,42 +86,9 @@ select
     count(*) churn_count,
     round(100*count(*) / (select count(distinct customer_id) from foodie_fi.subscriptions),0) churn_percentage
 from ranking
-where plan_name = 'churn' and rank_= 2
-
---select *
---from ranking
---where plan_name = 'churn' and rank_ = 2 
-
-
---Bài sửa
--- To find ranking of the plans by customers and plans
-WITH ranking AS (
-SELECT 
-  s.customer_id, 
-  s.plan_id, 
-  p.plan_name,
-  -- Run a ROW_NUMBER() to rank the plans from 0 to 4
-  ROW_NUMBER() OVER (
-    PARTITION BY s.customer_id 
-    ORDER BY s.plan_id) AS plan_rank 
-FROM foodie_fi.subscriptions s
-JOIN foodie_fi.plans p
-  ON s.plan_id = p.plan_id)
-  
-SELECT 
-  COUNT(*) AS churn_count,
-  ROUND(100 * COUNT(*) / (
-    SELECT COUNT(DISTINCT customer_id) 
-    FROM foodie_fi.subscriptions),0) AS churn_percentage
-FROM ranking
-WHERE plan_id = 4 -- Filter to churn plan
-  AND plan_rank = 2 -- Filter to rank 2 as customers who churned immediately after trial have churn plan ranked as 2
+where plan_name = 'churn' and rank_= 2;
 
 --6. What is the number and percentage of customer plans after their initial free trial?
-Số lượng mỗi plan và phần trăm mỗi plan sau lần đầu đky free trial 
-<=> Tính toán sau khi customer dùng plan free trial thì plan tiếp theo họ dùng là gì và tỉ lệ % lựa chọn plan đó ntn 
-
---Bài làm -> ĐÚNG
 with ranking AS
 (SELECT  
     s.*,plan_name,
@@ -138,7 +100,7 @@ on s.plan_id = p.plan_id)
 select
     plan_name next_plan,
     count(*) plan_count,
-    convert(float,round(100.0*count(*) / (select count(distinct customer_id) from foodie_fi.subscriptions),2)) plan_percentage
+    CAST(round(100.0*count(*) / (select count(distinct customer_id) from foodie_fi.subscriptions),1) AS FLOAT) plan_percentage
 from ranking
 where 
         plan_name = 'churn' and rank_= 2
@@ -146,121 +108,39 @@ where
     or  plan_name = 'pro monthly' and rank_=2
     or  plan_name = 'pro annual' and rank_=2
 group by plan_name
-order by plan_percentage desc 
-
---Bài sửa 
--- To retrieve next plan's start date located in the next row based on current row
-WITH next_plan_cte AS (
-SELECT 
-  customer_id, 
-  plan_id, 
-  LEAD(plan_id, 1) OVER( -- Offset by 1 to retrieve the immediate row's value below 
-    PARTITION BY customer_id 
-    ORDER BY plan_id) as next_plan
-FROM foodie_fi.subscriptions)
-
-SELECT 
-  next_plan, 
-  COUNT(*) AS conversions,
-  ROUND(100.0 * COUNT(*) / (
-    SELECT COUNT(DISTINCT customer_id) 
-    FROM foodie_fi.subscriptions),1) AS conversion_percentage
-FROM next_plan_cte
-WHERE next_plan IS NOT NULL 
-  AND plan_id = 0
-GROUP BY next_plan
-ORDER BY next_plan;
+order by plan_percentage desc; 
 
 --7. What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
-
---????????????????????????????????--
-tính số lượng customer và phần trăm customer của 5 plan tại thời điểm 2020-12-31
-
---Bài làm -> SAI
 with cte as 
 (select
     s.*,
     plan_name,
-    price
+    price,
+    rank() over (partition by customer_id order by start_date desc) as rank_
 from foodie_fi.subscriptions s 
 join foodie_fi.plans p 
 on s.plan_id = p.plan_id 
-where start_date <= '2020-12-30')
+where start_date <= '2020-12-31'
+order by 1 desc)
 
 SELECT
     plan_name,
     count(1) customer_count,
-    CONVERT(float,round(100.0*count(*)/(select count(distinct customer_id) from cte),2)) 
+    CAST(round(100.0*count(*)/(select count(distinct customer_id) from cte),1) AS FLOAT) percentage_of_plans
 from cte
+where rank_ = 1
 group by plan_name
-
------
--- Bài sửa (cách khác)
-WITH ranked AS 
-(
-  SELECT
-    customer_id,
-    plan_name,
-    RANK() OVER(PARTITION BY customer_id ORDER BY start_date desc) AS RANK
-  FROM subscriptions AS s
-  JOIN plans AS p 
-  ON s.plan_id = p.plan_id
-  WHERE start_date <= '2020-12-31' 
-)
-
-SELECT 
-  plan_name,
-  count(*) customer_count, 
-  convert(float,ROUND((100.0*count(*)/(select count(distinct customer_id) from foodie_fi.subscriptions)),2)) percentage_of_plans
-from ranked 
-WHERE rank = 1
-group by plan_name
-order by 1
-
-
-
---Bài sửa 
--- To retrieve next plan's start date located in the next row based on current row
-WITH next_plan AS(
-SELECT 
-  customer_id, 
-  plan_id, 
-  start_date,
-  LEAD(start_date, 1) OVER(PARTITION BY customer_id ORDER BY start_date) as next_date
-FROM foodie_fi.subscriptions
-WHERE start_date <= '2020-12-31'),
--- To find breakdown of customers with existing plans on or after 31 Dec 2020
-customer_breakdown AS (
-  SELECT plan_id, COUNT(DISTINCT customer_id) AS customers
-    FROM next_plan
-    WHERE (next_date IS NOT NULL AND (start_date < '2020-12-31' AND next_date > '2020-12-31'))
-      OR (next_date IS NULL AND start_date < '2020-12-31')
-    GROUP BY plan_id)
-
-SELECT plan_id, customers, 
-  ROUND(100.0 * customers / (
-    SELECT COUNT(DISTINCT customer_id) 
-    FROM foodie_fi.subscriptions),1) AS percentage
-FROM customer_breakdown
-GROUP BY plan_id, customers
-ORDER BY plan_id
+order by 3 desc;
 
 --8. How many customers have upgraded to an annual plan in 2020?
-có bao nhiêu customer nâng cấp lên plan pro annual trong năm 2020
-
 SELECT 
     count(distinct customer_id) pro_annual_customers
 from foodie_fi.subscriptions s  
 join foodie_fi.plans p 
 on s.plan_id = p.plan_id
-where plan_name = 'pro annual' and YEAR(start_date) = 2020
+where plan_name = 'pro annual' and EXTRACT('YEAR' FROM start_date) = 2020;
 
 --9. How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
-thời gian trung bình (tính theo ngày) mà 1 customer đăng ký plan pro annual sau khi họ join vào Foodie-Fi 
-
---Bài làm -> ĐÚNG
--- phải lọc ra 2 bảng trial date và annual date để tính được thời gian từ khi join (tức là trial plan) cho đến khi upgrade lên plan pro annual
--- vì đề bài chỉ muốn biết khoảng thgian từ khi join đến khi upgrade lên annual plan (không quan tâm đến các plan trung gian của customer)
 with annual AS
 (
 select customer_id, start_date annual_date
@@ -275,87 +155,61 @@ where plan_id = 0
 )
 
 select 
-    round(AVG(DATEDIFF(day,trial_date,annual_date)),0) avg_days_to_annual
+  ROUND(AVG(annual_date - trial_date )) avg_days_to_annual
 from trial t 
 join annual a 
-on t.customer_id = a.customer_id
-
------
-with annual AS
-(
-select customer_id, start_date annual_date
-from foodie_fi.subscriptions
-where plan_id = 3
-)
-
-select 
-    round(AVG(DATEDIFF(day,start_date,annual_date)),0) avg_days_to_annual  -- sai vì start_date này sẽ tính bao hàm luôn start_date ở plan annual mà customer đky khi đó khoảng thgian sẽ không chính xác nếu lấy 2 mốc date trừ nhau
-from foodie_fi.subscriptions s  
-join annual a 
-on s.customer_id = a.customer_id
-
--- Bài sửa
--- Filter results to customers at trial plan = 0
-WITH trial_plan AS 
-(SELECT 
-  customer_id, 
-  start_date AS trial_date
-FROM foodie_fi.subscriptions
-WHERE plan_id = 0
-),
--- Filter results to customers at pro annual plan = 3
-annual_plan AS
-(SELECT 
-  customer_id, 
-  start_date AS annual_date
-FROM foodie_fi.subscriptions
-WHERE plan_id = 3
-)
-
-SELECT 
-  ROUND(AVG(annual_date - trial_date),0) AS avg_days_to_upgrade
-FROM trial_plan tp
-JOIN annual_plan ap
-  ON tp.customer_id = ap.customer_id;
+on t.customer_id = a.customer_id;
 
 --10. Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
---Bài giải 
-WITH trial_plan AS(
-  SELECT 
-    customer_id,
-    start_date AS join_date
-  FROM subscriptions
-  WHERE plan_id = 0
-),
-annual_plan AS(
-  SELECT 
-    customer_id,
-    start_date AS annual_start_date
-  FROM subscriptions
+WITH annual AS (
+  SELECT customer_id, start_date AS annual_date
+  FROM foodie_fi.subscriptions
   WHERE plan_id = 3
 ),
-buckets AS(
-  SELECT 
-    tp.customer_id,
-    join_date,
-    annual_start_date,
-    -- create buckets of 30 days period from 1 to 12 (i.e monthly buckets)
-    DATEDIFF(DAY, join_date, annual_start_date)/30 + 1 AS bucket
-  FROM 
-    trial_plan tp
-    JOIN annual_plan ap
-    ON tp.customer_id = ap.customer_id
+trial AS (
+  SELECT customer_id, start_date AS trial_date
+  FROM foodie_fi.subscriptions
+  WHERE plan_id = 0
 )
-
-SELECT 
+SELECT period, total_customers
+FROM (
+  SELECT
+    CASE 
+      WHEN ROUND(annual_date - trial_date) <= 30 THEN '0 - 30'
+      WHEN ROUND(annual_date - trial_date) <= 60 THEN '31 - 60'
+      WHEN ROUND(annual_date - trial_date) <= 90 THEN '61 - 90'
+      WHEN ROUND(annual_date - trial_date) <= 120 THEN '91 - 120'
+      WHEN ROUND(annual_date - trial_date) <= 150 THEN '121 - 150'
+      WHEN ROUND(annual_date - trial_date) <= 180 THEN '151 - 180'
+      WHEN ROUND(annual_date - trial_date) <= 210 THEN '181 - 210'
+      WHEN ROUND(annual_date - trial_date) <= 240 THEN '211 - 240'
+      WHEN ROUND(annual_date - trial_date) <= 270 THEN '241 - 270'
+      WHEN ROUND(annual_date - trial_date) <= 300 THEN '271 - 300'
+      WHEN ROUND(annual_date - trial_date) <= 330 THEN '301 - 330'
+      WHEN ROUND(annual_date - trial_date) <= 360 THEN '331 - 360'
+      ELSE '361+'
+    END AS period,
+    COUNT(*) AS total_customers
+  FROM trial t
+  JOIN annual a ON t.customer_id = a.customer_id
+  GROUP BY period
+) sub
+ORDER BY 
   CASE 
-    WHEN bucket = 1 THEN CONCAT(bucket-1, ' - ', bucket*30, ' days')
-    ELSE CONCAT((bucket-1)*30 + 1, ' - ', bucket*30, ' days')
-  END AS period,
-  COUNT(customer_id) AS total_customers,
-  CAST(AVG(DATEDIFF(DAY, join_date, annual_start_date)*1.0) AS decimal(5, 2)) AS average_days
-FROM buckets
-GROUP BY bucket;
+    WHEN period = '0 - 30' THEN 1
+    WHEN period = '31 - 60' THEN 2
+    WHEN period = '61 - 90' THEN 3
+    WHEN period = '91 - 120' THEN 4
+    WHEN period = '121 - 150' THEN 5
+    WHEN period = '151 - 180' THEN 6
+    WHEN period = '181 - 210' THEN 7
+    WHEN period = '211 - 240' THEN 8
+    WHEN period = '241 - 270' THEN 9
+    WHEN period = '271 - 300' THEN 10
+    WHEN period = '301 - 330' THEN 11
+    WHEN period = '331 - 360' THEN 12
+    ELSE 13
+  END;
 
 --11. How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
 tính số lượng customer chuyển từ plan pro monthly xuông basic monthly trong 2020

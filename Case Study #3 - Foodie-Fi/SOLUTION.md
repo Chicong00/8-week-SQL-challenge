@@ -169,42 +169,45 @@ ORDER BY event_count_2020 DESC;
 ````sql
 with churned_cte as
 (select distinct s.*,plan_name
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id 
 where plan_name = 'churn')
 
 select 
     count(*) churn_count,
-    convert(float,round((100.0*count(distinct customer_id)/(select count(distinct customer_id) from dbo.subscriptions)),2)) as churn_percentage
-from churned_cte
+    CAST(round((100.0*count(distinct customer_id)/(select count(distinct customer_id) from foodie_fi.subscriptions)),1) as FLOAT) as churn_percentage
+from churned_cte;
 ````
-**Result**
 |churn_count|churn_percentage|
 |---|---|
 |307|30.7|
 
 ### 5. How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number ?
+
+Create a rank column for each customer by start_date, then retrieve customer has plan_id = 4 (churned) and rank = 2 (after free trial)
+
 ````sql
 with ranking AS
 (SELECT  s.*,plan_name,
     ROW_NUMBER() over (partition by customer_id order by start_date) rank_
-from dbo.subscriptions s 
-join dbo.plans p 
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id)
  
 select
     count(*) churn_count,
-    round(100*count(*) / (select count(distinct customer_id) from dbo.subscriptions),0) churn_percentage
+    round(100*count(*) / (select count(distinct customer_id) from foodie_fi.subscriptions),0) churn_percentage
 from ranking
-where plan_name = 'churn' and rank_= 2
+where plan_name = 'churn' and rank_= 2;
 ````
-**Result**
 |churn_count|churn_percentage|
 |---|---|
 |92|9|
 
 ### 6. What is the number and percentage of customer plans after their initial free trial ?
+
+Use the same approach of #5, to know the plan after the free trial -> create a rank column, where rank = 1 is the free trial, then rank = 2 is the plan after their initial free trial.
 
 ````sql
 with ranking AS
@@ -228,7 +231,6 @@ where
 group by plan_name
 order by plan_percentage desc
 ````
-**Result**
 |next_plan|plan_count|plan_percentage|    
 |---|---|---|
 |basic monthly|546|54.6|
@@ -237,80 +239,146 @@ order by plan_percentage desc
 |pro annual|37|3.7|
   
 ### 7. What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
-````sql
-WITH ranked AS 
-(
-  SELECT
-    customer_id,
-    plan_name,
-    RANK() OVER(PARTITION BY customer_id ORDER BY start_date DESC) rank_
-  FROM subscriptions AS s
-  JOIN plans AS p 
-  ON s.plan_id = p.plan_id
-  WHERE start_date <= '2020-12-31' 
-)
 
-SELECT 
-  plan_name,
-  count(*) customer_count, 
-  convert(float,ROUND((100.0*count(*)/(select count(distinct customer_id) from dbo.subscriptions)),2)) percentage_of_plans
-from ranked 
-WHERE rank_ = 1
+Use the same approach of #5, to count the number of customers by plan at 2020-12-31 -> Create a rank column and sort by descending start date -> Know the latest plan the user is using as of 12-31-2020 by rank = 1
+
+````sql
+with cte as 
+(select
+    s.*,
+    plan_name,
+    price,
+    rank() over (partition by customer_id order by start_date desc) as rank_
+from foodie_fi.subscriptions s 
+join foodie_fi.plans p 
+on s.plan_id = p.plan_id 
+where start_date <= '2020-12-31'
+order by 1 desc)
+
+SELECT
+    plan_name,
+    count(1) customer_count,
+    CAST(round(100.0*count(*)/(select count(distinct customer_id) from cte),1) AS FLOAT) percentage_of_plans
+from cte
+where rank_ = 1
 group by plan_name
-order by 1
+order by 3 desc;
 ````
-**Result**
 |plan_name|customer_count|percentage_of_plans|    
 |---|---|---|
-|basic monthly|224|22.4|
-|churn|236|23.6|
-|pro annual|195|19.5|
 |pro monthly|326|32.6|
+|churn|236|23.6|
+|basic monthly|224|22.4|
+|pro annual|195|19.5|
 |trial|19|1.9|
   
 ### 8. How many customers have upgraded to an annual plan in 2020 ?
 ````sql
 SELECT 
     count(distinct customer_id) pro_annual_customers
-from dbo.subscriptions s  
-join dbo.plans p 
+from foodie_fi.subscriptions s  
+join foodie_fi.plans p 
 on s.plan_id = p.plan_id
-where plan_name = 'pro annual' and YEAR(start_date) = 2020
+where plan_name = 'pro annual' and EXTRACT('YEAR' FROM start_date) = 2020;
 ````
-**Result**
 |pro_annual_customers|
 |---|
 |195|
 
 ### 9. How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi ?
+
+The question doesn't ask for a detailed plan from the date the customer joined, so I assume I just need to count the days from the first day to the first day of the annual plan.
+
 ````sql
 with annual AS
 (
 select customer_id, start_date annual_date
-from dbo.subscriptions
+from foodie_fi.subscriptions
 where plan_id = 3
 ), 
 trial as 
 (
 select customer_id, start_date trial_date
-from dbo.subscriptions
+from foodie_fi.subscriptions
 where plan_id = 0
 )
 
 select 
-    round(AVG(DATEDIFF(day,trial_date,annual_date)),0) avg_days_to_annual
+  ROUND(AVG(annual_date - trial_date )) avg_days_to_annual
 from trial t 
 join annual a 
-on t.customer_id = a.customer_id
+on t.customer_id = a.customer_id;
 ````
-**Result**
 |avg_days_to_annual|
 |---|
-|104|
+|105|
 
 ### 10. Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc) ?
 ````sql
+WITH annual AS (
+  SELECT customer_id, start_date AS annual_date
+  FROM foodie_fi.subscriptions
+  WHERE plan_id = 3
+),
+trial AS (
+  SELECT customer_id, start_date AS trial_date
+  FROM foodie_fi.subscriptions
+  WHERE plan_id = 0
+)
+SELECT period, total_customers
+FROM (
+  SELECT
+    CASE 
+      WHEN ROUND(annual_date - trial_date) <= 30 THEN '0 - 30'
+      WHEN ROUND(annual_date - trial_date) <= 60 THEN '31 - 60'
+      WHEN ROUND(annual_date - trial_date) <= 90 THEN '61 - 90'
+      WHEN ROUND(annual_date - trial_date) <= 120 THEN '91 - 120'
+      WHEN ROUND(annual_date - trial_date) <= 150 THEN '121 - 150'
+      WHEN ROUND(annual_date - trial_date) <= 180 THEN '151 - 180'
+      WHEN ROUND(annual_date - trial_date) <= 210 THEN '181 - 210'
+      WHEN ROUND(annual_date - trial_date) <= 240 THEN '211 - 240'
+      WHEN ROUND(annual_date - trial_date) <= 270 THEN '241 - 270'
+      WHEN ROUND(annual_date - trial_date) <= 300 THEN '271 - 300'
+      WHEN ROUND(annual_date - trial_date) <= 330 THEN '301 - 330'
+      WHEN ROUND(annual_date - trial_date) <= 360 THEN '331 - 360'
+      ELSE '361+'
+    END AS period,
+    COUNT(*) AS total_customers
+  FROM trial t
+  JOIN annual a ON t.customer_id = a.customer_id
+  GROUP BY period
+) sub
+ORDER BY 
+  CASE 
+    WHEN period = '0 - 30' THEN 1
+    WHEN period = '31 - 60' THEN 2
+    WHEN period = '61 - 90' THEN 3
+    WHEN period = '91 - 120' THEN 4
+    WHEN period = '121 - 150' THEN 5
+    WHEN period = '151 - 180' THEN 6
+    WHEN period = '181 - 210' THEN 7
+    WHEN period = '211 - 240' THEN 8
+    WHEN period = '241 - 270' THEN 9
+    WHEN period = '271 - 300' THEN 10
+    WHEN period = '301 - 330' THEN 11
+    WHEN period = '331 - 360' THEN 12
+    ELSE 13
+  END;
 ````
+| period    | total_customers |
+|-----------|-----------------|
+| 0 - 30    | 49              |
+| 31 - 60   | 24              |
+| 61 - 90   | 34              |
+| 91 - 120  | 35              |
+| 121 - 150 | 42              |
+| 151 - 180 | 36              |
+| 181 - 210 | 26              |
+| 211 - 240 | 4               |
+| 241 - 270 | 5               |
+| 271 - 300 | 1               |
+| 301 - 330 | 1               |
+| 331 - 360 | 1               |
 
 ### 11. How many customers downgraded from a pro monthly to a basic monthly plan in 2020 ?
 ````sql
