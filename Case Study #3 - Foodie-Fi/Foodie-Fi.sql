@@ -246,55 +246,43 @@ AND EXTRACT(YEAR FROM p.start_date) = 2020;
 -- once a customer churns they will no longer make payments
 
 
+
 ----- D. OUTSIDE THE BOX QUESTIONS -----
 --1. How would you calculate the rate of growth for Foodie-Fi?
--- tính tổng số customer của mỗi tháng, sau đó lấy (slg customer tháng sau - slg customer tháng trước)*100% = %_growth 
+-- Compare the number of of each plan_name in the current month to the previous month.
+-- Then calculate the percentage growth
 
---Nháp 
-with cte as 
-(
-  SELECT 
-    MONTH(s.start_date) month ,
-    YEAR(s.start_date) year,
-    COUNT(distinct customer_id) current_customer_count,
-    lag(COUNT(distinct customer_id),1) over(order by month(s.start_date)) past_customer_count
-  from foodie_fi.subscriptions s 
-  where year(start_date) < 2021 and plan_id != 0 and plan_id != 4
-  group by YEAR(s.start_date), MONTH(s.start_date)
+with cte as (
+SELECT
+    EXTRACT(YEAR FROM s.start_date) as year,
+    EXTRACT(MONTH FROM s.start_date) as month,
+    plan_name,
+    COUNT(DISTINCT customer_id) current_customer_count
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p ON s.plan_id = p.plan_id
+GROUP BY 1,2,3
 )
-
-select *,
-  concat(convert(float,round((100.0*(current_customer_count - past_customer_count)/100),2)),' %') as growth_percentage 
-from cte
-
--- Bài làm -> Đúng
-with cte as 
-(
-  SELECT 
-    MONTH(s.start_date) month ,
-    YEAR(s.start_date) year,
-    COUNT(distinct customer_id) current_customer_count,
-    lag(COUNT(distinct customer_id),1) over(order by year(start_date),month(s.start_date)) past_customer_count
-  from foodie_fi.subscriptions s 
-  where plan_id != 0 and plan_id != 4
-  group by YEAR(s.start_date), MONTH(s.start_date)
-  --order by [year],[month]
-) 
-select *,
-  concat(convert(float,round((100.0*(current_customer_count - past_customer_count)/(past_customer_count)),2)),' %') as growth_percentage 
-from cte
-
+SELECT
+    year,
+    month,
+    plan_name,
+    current_customer_count,
+    LAG(current_customer_count, 1) OVER (PARTITION BY plan_name ORDER BY year, month) AS past_customer_count,
+    ROUND((current_customer_count - LAG(current_customer_count, 1) OVER (PARTITION BY plan_name ORDER BY year, month)) * 100.0 / NULLIF(LAG(current_customer_count, 1) OVER (PARTITION BY plan_name ORDER BY year, month), 0), 2) AS growth_percentage
+FROM cte
+ORDER BY plan_name, year, month;
 
 --2. What key metrics would you recommend Foodie-Fi management to track over time to assess performance of their overall business?
---Bài làm 
+
 - Total active customers (= total - churn) by plans, total paying customers (= total - free - churn) by plans
-- Growth of subscription by month,year 
+- Growth of upgraded subscription by month,year 
 - Total revenue 
 - Percentage of customers who churn after using the free trial
 - Percentage of customers who upgrade after using the free trial
 - 
 --3. What are some key customer journeys or experiences that you would analyse further to improve customer retention?
-- Behavior of customer at the end of the free trial day (7th day after sign up) - Do they upgrade to  other plans or churn?
+- Behavior of customer at the end of the free trial day (7th day after sign up) 
+- Do they upgrade to  other plans or churn?
  
 --4. If the Foodie-Fi team were to create an exit survey shown to customers who wish to cancel their subscription, what questions would you include in the survey?
 --5. What business levers could the Foodie-Fi team use to reduce the customer churn rate? How would you validate the effectiveness of your ideas?

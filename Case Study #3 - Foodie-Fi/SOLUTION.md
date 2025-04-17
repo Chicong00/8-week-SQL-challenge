@@ -420,6 +420,16 @@ AND EXTRACT(YEAR FROM p.start_date) = 2020;
 <summary>
 C. Challenge Payment Question
 </summary>
+The Foodie-Fi team wants you to create a new payments table for the year 2020 that includes amounts paid by each customer in the subscriptions table with the following requirements:
+
+- monthly payments always occur on the same day of month as the original start_date of any monthly paid plan
+- upgrades from basic to monthly or pro plans are reduced by the current paid amount in that month and start immediately
+- upgrades from pro monthly to pro annual are paid at the end of the current billing period and also starts at the end of the month period
+- once a customer churns they will no longer make payments
+
+```sql
+
+```
 
 </details>
 
@@ -430,40 +440,107 @@ D. Outside The Box Questions
 
 ### 1. How would you calculate the rate of growth for Foodie-Fi?
 ````sql
-with cte as 
-(
-  SELECT 
-    MONTH(s.start_date) month ,
-    YEAR(s.start_date) year,
-    COUNT(distinct customer_id) current_customer_count,
-    lag(COUNT(distinct customer_id),1) over(order by year(start_date),month(s.start_date)) past_customer_count
-  from dbo.subscriptions s 
-  where plan_id != 0 and plan_id != 4
-  group by YEAR(s.start_date), MONTH(s.start_date)
+with cte as (
+SELECT
+    EXTRACT(YEAR FROM s.start_date) as year,
+    EXTRACT(MONTH FROM s.start_date) as month,
+    plan_name,
+    COUNT(DISTINCT customer_id) current_customer_count
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p ON s.plan_id = p.plan_id
+GROUP BY 1,2,3
 )
-select *,
-  concat(convert(float,round((100.0*(current_customer_count - past_customer_count)/(past_customer_count)),2)),' %') as growth_percentage 
-from cte
+SELECT
+    year,
+    month,
+    plan_name,
+    current_customer_count,
+    LAG(current_customer_count, 1) OVER (PARTITION BY plan_name ORDER BY year, month) AS past_customer_count,
+    ROUND((current_customer_count - LAG(current_customer_count, 1) OVER (PARTITION BY plan_name ORDER BY year, month)) * 100.0 / NULLIF(LAG(current_customer_count, 1) OVER (PARTITION BY plan_name ORDER BY year, month), 0), 2) AS growth_percentage
+FROM cte
+ORDER BY plan_name, year, month;
 ````
-**Result**
-|month|year|current_customer_count|past_customer_count|growth_percentage|
-|---|---|---|---|---|
-|1|2020|61|NULL|%|
-|2|2020|70|61|14.75%|
-|3|2020|93|70|32.86%|
-|4|2020|84|93|-9.68%|
-|5|2020|104|84|23.81%|
-|6|2020|105|104|0.96%|
-|7|2020|101|105|-3.81%|
-|8|2020|130|101|28.71%|
-|9|2020|112|130|-13.85%|
-|10|2020|124|112|10.71%|
-|11|2020|99|124|-20.16%|
-|12|2020|109|99|10.1%|
-|1|2021|58|109|-46.79%|
-|2|2021|29|58|-50%|
-|3|2021|24|29|-17.24%|
-|4|2021|20|24|-16.67%|
+<details>
+<summary> Table result </summary>
+
+| year | month | plan_name     | current_customer_count | past_customer_count | growth_percentage |
+|------|-------|---------------|------------------------|---------------------|-------------------|
+| 2020 | 1     | basic monthly | 31                     |                     |                   |
+| 2020 | 2     | basic monthly | 37                     | 31                  | 19.35             |
+| 2020 | 3     | basic monthly | 49                     | 37                  | 32.43             |
+| 2020 | 4     | basic monthly | 43                     | 49                  | -12.24            |
+| 2020 | 5     | basic monthly | 53                     | 43                  | 23.26             |
+| 2020 | 6     | basic monthly | 51                     | 53                  | -3.77             |
+| 2020 | 7     | basic monthly | 44                     | 51                  | -13.73            |
+| 2020 | 8     | basic monthly | 54                     | 44                  | 22.73             |
+| 2020 | 9     | basic monthly | 38                     | 54                  | -29.63            |
+| 2020 | 10    | basic monthly | 46                     | 38                  | 21.05             |
+| 2020 | 11    | basic monthly | 49                     | 46                  | 6.52              |
+| 2020 | 12    | basic monthly | 43                     | 49                  | -12.24            |
+| 2021 | 1     | basic monthly | 8                      | 43                  | -81.4             |
+| 2020 | 1     | churn         | 9                      |                     |                   |
+| 2020 | 2     | churn         | 9                      | 9                   | 0                 |
+| 2020 | 3     | churn         | 13                     | 9                   | 44.44             |
+| 2020 | 4     | churn         | 18                     | 13                  | 38.46             |
+| 2020 | 5     | churn         | 21                     | 18                  | 16.67             |
+| 2020 | 6     | churn         | 19                     | 21                  | -9.52             |
+| 2020 | 7     | churn         | 28                     | 19                  | 47.37             |
+| 2020 | 8     | churn         | 13                     | 28                  | -53.57            |
+| 2020 | 9     | churn         | 23                     | 13                  | 76.92             |
+| 2020 | 10    | churn         | 26                     | 23                  | 13.04             |
+| 2020 | 11    | churn         | 32                     | 26                  | 23.08             |
+| 2020 | 12    | churn         | 25                     | 32                  | -21.88            |
+| 2021 | 1     | churn         | 19                     | 25                  | -24               |
+| 2021 | 2     | churn         | 18                     | 19                  | -5.26             |
+| 2021 | 3     | churn         | 21                     | 18                  | 16.67             |
+| 2021 | 4     | churn         | 13                     | 21                  | -38.1             |
+| 2020 | 1     | pro annual    | 2                      |                     |                   |
+| 2020 | 2     | pro annual    | 5                      | 2                   | 150               |
+| 2020 | 3     | pro annual    | 7                      | 5                   | 40                |
+| 2020 | 4     | pro annual    | 11                     | 7                   | 57.14             |
+| 2020 | 5     | pro annual    | 13                     | 11                  | 18.18             |
+| 2020 | 6     | pro annual    | 16                     | 13                  | 23.08             |
+| 2020 | 7     | pro annual    | 20                     | 16                  | 25                |
+| 2020 | 8     | pro annual    | 24                     | 20                  | 20                |
+| 2020 | 9     | pro annual    | 25                     | 24                  | 4.17              |
+| 2020 | 10    | pro annual    | 32                     | 25                  | 28                |
+| 2020 | 11    | pro annual    | 20                     | 32                  | -37.5             |
+| 2020 | 12    | pro annual    | 20                     | 20                  | 0                 |
+| 2021 | 1     | pro annual    | 24                     | 20                  | 20                |
+| 2021 | 2     | pro annual    | 17                     | 24                  | -29.17            |
+| 2021 | 3     | pro annual    | 9                      | 17                  | -47.06            |
+| 2021 | 4     | pro annual    | 13                     | 9                   | 44.44             |
+| 2020 | 1     | pro monthly   | 29                     |                     |                   |
+| 2020 | 2     | pro monthly   | 29                     | 29                  | 0                 |
+| 2020 | 3     | pro monthly   | 37                     | 29                  | 27.59             |
+| 2020 | 4     | pro monthly   | 31                     | 37                  | -16.22            |
+| 2020 | 5     | pro monthly   | 39                     | 31                  | 25.81             |
+| 2020 | 6     | pro monthly   | 39                     | 39                  | 0                 |
+| 2020 | 7     | pro monthly   | 40                     | 39                  | 2.56              |
+| 2020 | 8     | pro monthly   | 56                     | 40                  | 40                |
+| 2020 | 9     | pro monthly   | 52                     | 56                  | -7.14             |
+| 2020 | 10    | pro monthly   | 47                     | 52                  | -9.62             |
+| 2020 | 11    | pro monthly   | 32                     | 47                  | -31.91            |
+| 2020 | 12    | pro monthly   | 48                     | 32                  | 50                |
+| 2021 | 1     | pro monthly   | 26                     | 48                  | -45.83            |
+| 2021 | 2     | pro monthly   | 12                     | 26                  | -53.85            |
+| 2021 | 3     | pro monthly   | 15                     | 12                  | 25                |
+| 2021 | 4     | pro monthly   | 7                      | 15                  | -53.33            |
+| 2020 | 1     | trial         | 88                     |                     |                   |
+| 2020 | 2     | trial         | 68                     | 88                  | -22.73            |
+| 2020 | 3     | trial         | 94                     | 68                  | 38.24             |
+| 2020 | 4     | trial         | 81                     | 94                  | -13.83            |
+| 2020 | 5     | trial         | 88                     | 81                  | 8.64              |
+| 2020 | 6     | trial         | 79                     | 88                  | -10.23            |
+| 2020 | 7     | trial         | 89                     | 79                  | 12.66             |
+| 2020 | 8     | trial         | 88                     | 89                  | -1.12             |
+| 2020 | 9     | trial         | 87                     | 88                  | -1.14             |
+| 2020 | 10    | trial         | 79                     | 87                  | -9.2              |
+| 2020 | 11    | trial         | 75                     | 79                  | -5.06             |
+| 2020 | 12    | trial         | 84                     | 75                  | 12                |
+
+
+</details>
 
 ### 2. What key metrics would you recommend Foodie-Fi management to track over time to assess performance of their overall business?
 
@@ -473,27 +550,44 @@ from cte
 
 ### 3. What are some key customer journeys or experiences that you would analyse further to improve customer retention?
 
-- Customers who cancelled the subscription
-- Customers who upgraded the subscription
+- Customers who cancelled the subscription after trial
+- Customers who upgraded the subscription:
 	- From basic monthly to pro monthly
 	- From basic monthly to pro annual
 
 ### 4. If the Foodie-Fi team were to create an exit survey shown to customers who wish to cancel their subscription, what questions would you include in the survey?
 
-- Why do you want to cancel subscription? What is the primary reason ?
-	- Price
-	- Content
-	- Techinical issues
-	- Customer support
-	- Found an alternative
-	- Others (specify)
-- On a 5-point scale, how would you rate your experience?
-- On a 5-point scale, how would you rate the price?
-- Is there anything you want us to change ?
-	- Content (quality and quantity)
-	- Video duration (longer or shorter)
-	- Price
-	- Others (specify)
+**General Reason for Cancellation**
+
+1. What is the primary reason you are canceling your subscription?
+- Price is not affordable
+- Content not interesting
+- Techinical issues
+- Customer support
+- Found a better alternative
+- Temporary break
+- Others (specify)
+
+**Usage & Satisfaction**
+
+2. How often did you use Foodie-Fi?
+(Daily / Weekly / Monthly / Rarely / Never)
+
+3. On a 5-point scale, how would you rate your experience?
+(1 - Very Unsatisfied to 5 - Ver Satisfied)
+
+4. On a 5-point scale, how would you rate the price?
+(1 - Too cheap to 5 - Too expensive)
+
+**Feature Feedback**
+
+5. Which features did you use the most?
+(Open-ended or multiple choice depending on platform features)
+
+6. What features or improvements would have made you stay?
+(Open-ended)
+
+
 	
 ### 5. What business levers could the Foodie-Fi team use to reduce the customer churn rate? How would you validate the effectiveness of your ideas?
 
