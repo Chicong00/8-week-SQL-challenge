@@ -212,40 +212,31 @@ ORDER BY
   END;
 
 --11. How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
-tính số lượng customer chuyển từ plan pro monthly xuông basic monthly trong 2020
-<=> start date pro monthly nằm liền trước start date basic monthly  
 
---Bài làm -> CHƯA ĐÚNG HOÀN TOÀN 
-with ranking AS
-(SELECT  
-    s.*,plan_name,
-    ROW_NUMBER() over (partition by customer_id order by start_date) rank_
-from foodie_fi.subscriptions s 
-join foodie_fi.plans p 
-on s.plan_id = p.plan_id)
-
-select count(*) downgraded
-from ranking
-where year(start_date) = 2020 
-and plan_name = 'pro monthly' and rank_ = 2 -- vì trial plan mặc định là plan đầu tiên (rank = 0) do đó để thỏa yêu cầu đề bài thì rank của pro monthly và rank của basic monthly lần lượt là 2 và 3 
-and plan_name = 'basic monthly' and rank_ = 3  --> Không bao quát được tất cả trường hợp: g/s sau plan trial customer đky annual rồi đky pro monthly tiếp sau là basic monthly thì khi đó rank của pro monthly và basic monthly sẽ không phải là 2 và 3 
-
---Bài sửa
--- To retrieve next plan's start date located in the next row based on current row
-WITH next_plan_cte AS (
-SELECT 
-  customer_id, 
-  plan_id, 
-  start_date,
-  LEAD(plan_id, 1) OVER(PARTITION BY customer_id ORDER BY plan_id) as next_plan
-FROM foodie_fi.subscriptions)
-
-SELECT 
-  COUNT(*) AS downgraded
-FROM next_plan_cte
-WHERE start_date <= '2020-12-31'
-  AND plan_id = 2 
-  AND next_plan = 1;
+with pro_mon as
+(
+SELECT  
+    s.customer_id,plan_name, start_date
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p
+ON s.plan_id = p.plan_id
+where plan_name = 'pro monthly'
+)
+, basic_mon as
+(
+SELECT  
+    s.customer_id,plan_name, start_date
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p
+ON s.plan_id = p.plan_id
+WHERE plan_name = 'basic monthly'
+)
+SELECT count(*) downgraded
+FROM pro_mon p
+JOIN basic_mon b
+ON p.customer_id = b.customer_id
+WHERE p.start_date < b.start_date
+AND EXTRACT(YEAR FROM p.start_date) = 2020;
 
 ----- C. CHALLENGE PAYMENT QUESTION -----
 -- Tạo bảng payments cho năm 2020 :

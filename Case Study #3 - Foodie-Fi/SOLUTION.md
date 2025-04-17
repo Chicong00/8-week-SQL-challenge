@@ -381,23 +381,35 @@ ORDER BY
 | 331 - 360 | 1               |
 
 ### 11. How many customers downgraded from a pro monthly to a basic monthly plan in 2020 ?
-````sql
-WITH next_plan_cte AS (
-SELECT 
-  customer_id, 
-  plan_id, 
-  start_date,
-  LEAD(plan_id, 1) OVER(PARTITION BY customer_id ORDER BY plan_id) as next_plan
-FROM dbo.subscriptions)
 
-SELECT 
-  COUNT(*) AS downgraded
-FROM next_plan_cte
-WHERE year(start_date) <= 2021  
-	AND plan_id = 2 
-  AND next_plan = 1
+Use the same logic as #09, I will join the pro monthly plan with the basic monthly plan together, then retrieve records with the start_date of the basic monthly > pro monthly
+
+````sql
+with pro_mon as
+(
+SELECT  
+    s.customer_id,plan_name, start_date
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p
+ON s.plan_id = p.plan_id
+where plan_name = 'pro monthly'
+)
+, basic_mon as
+(
+SELECT  
+    s.customer_id,plan_name, start_date
+FROM foodie_fi.subscriptions s
+JOIN foodie_fi.plans p
+ON s.plan_id = p.plan_id
+WHERE plan_name = 'basic monthly'
+)
+SELECT count(*) downgraded
+FROM pro_mon p
+JOIN basic_mon b
+ON p.customer_id = b.customer_id
+WHERE p.start_date < b.start_date
+AND EXTRACT(YEAR FROM p.start_date) = 2020;
 ````
-**Result**
 |downgraded|
 |---|
 |0|
