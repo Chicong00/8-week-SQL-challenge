@@ -158,9 +158,7 @@ SELECT
 	txn_date,
 	sum(case when txn_type = 'deposit' then txn_amount else 0 end) - sum(case when txn_type != 'deposit' then txn_amount else 0 end) as balance
 FROM data_bank.customer_transactions t
---WHERE customer_id = 429
 GROUP BY month_no, txn_date, customer_id
--- ORDER BY month_no, txn_date
 )
 , balance as (
 SELECT 
@@ -203,6 +201,62 @@ First 5 customers
 
 
 5. What is the percentage of customers who increase their closing balance by more than 5%? 
+
+- Step 1: Use the query in #4 to calculate the closing balance 
+- Step 2: Add the previous closing balance column by using the LAG() function
+- Step 3: Calculate the percent change between the current and previous closing balance and flag for the one with the value > 5
+- Step 4: Sum the number of customers with the flag and divide by the total number of customers
+
+```sql
+-- step 1: calculate closing balance
+with cte as (
+SELECT
+	customer_id,
+	extract('month' from txn_date) as month_no,
+	txn_date,
+	sum(case when txn_type = 'deposit' then txn_amount else 0 end) - sum(case when txn_type != 'deposit' then txn_amount else 0 end) as balance
+FROM data_bank.customer_transactions t
+GROUP BY month_no, txn_date, customer_id
+)
+, balance as (
+SELECT 
+	*,
+	SUM(balance) OVER (PARTITION BY customer_id ORDER BY txn_date) cumulative_balance, -- cumulative balance
+	row_number() over (PARTITION BY customer_id, month_no ORDER BY txn_date DESC) as row_num -- row number for each month to get the last balance of the month
+FROM cte
+ORDER BY txn_date
+)
+-- step 2: add previous closing balance column to compare row by row
+, pre_clo_balance as (
+SELECT
+	customer_id,
+	month_no,
+	(date_trunc('month',txn_date) + INTERVAL '1 month - 1 day')::date as end_of_month,
+	cumulative_balance as closing_balance,
+	 lag(cumulative_balance) over (PARTITION BY customer_id ORDER BY month_no) as prev_closing_balance
+FROM balance
+WHERE row_num = 1
+ORDER BY customer_id, end_of_month
+)
+-- step 3: closing balance change month by month of each customer
+, closing_balance_change as (
+SELECT
+*,
+	round((closing_balance - prev_closing_balance) / nullif(prev_closing_balance,0) * 100, 2) as closing_balance_change_percentage,
+	case 
+		when closing_balance > prev_closing_balance and round((closing_balance - prev_closing_balance) / nullif(prev_closing_balance,0) * 100, 2) > 5 then 1
+		else 0 end as closing_balance_increase_5_percent_flg
+FROM pre_clo_balance
+WHERE prev_closing_balance is not null
+)
+-- step 4: the percentage of customers who increase their closing balance by more than 5%
+select 
+	round(sum(closing_balance_increase_5_percent_flg) * 100.0 / count(closing_balance_increase_5_percent_flg), 2) as closing_balance_increase_5_percent_percentage
+from closing_balance_change;
+```
+|closing_balance_increase_5_percent_percentage|
+|---|
+|21.31|
   
 ### C. Data Allocation Challenge
 
