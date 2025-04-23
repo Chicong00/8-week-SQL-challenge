@@ -2,10 +2,7 @@
 
 [SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/0dd8668f836e07d9008205bbaf720c2f9677b702/Case%20Study%20%233%20-%20Foodie-Fi/Foodie-Fi.sql)
 
-<details>
-<summary>
-A. Customer Journey
-</summary> 
+## A. Customer Journey
 Based off the 8 sample customers provided in the sample from the subscriptions table, write a brief description about each customer’s onboarding journey.
 
 ````sql
@@ -81,13 +78,7 @@ Customer_id 79 started with a trial subscription and continued with a pro monthl
 
 Customer_id 80 started with a trial subscription and continued with a pro monthly subscription in 7 days after sign-up and has churned in 3 months after that.
 
-</details>
-
-<details>
-<summary>
-B. Data Analysis Questions
-</summary>
-  
+## B. Data Analysis Questions  
 ### 1. How many customers has Foodie-Fi ever had?
 ````sql
 select count(distinct(customer_id)) customer_count
@@ -414,12 +405,7 @@ AND EXTRACT(YEAR FROM p.start_date) = 2020;
 |---|
 |0|
 
-</details>
-
-<details>
-<summary>
-C. Challenge Payment Question
-</summary>
+## C. Challenge Payment Question
 The Foodie-Fi team wants you to create a new payments table for the year 2020 that includes amounts paid by each customer in the subscriptions table with the following requirements:
 
 - monthly payments always occur on the same day of month as the original start_date of any monthly paid plan
@@ -430,14 +416,7 @@ The Foodie-Fi team wants you to create a new payments table for the year 2020 th
 ```sql
 
 ```
-
-</details>
-
-<details>
-<summary>
-D. Outside The Box Questions
-</summary>
-
+## D. Outside The Box Questions
 ### 1. How would you calculate the rate of growth for Foodie-Fi?
 ````sql
 with cte as (
@@ -587,7 +566,6 @@ ORDER BY plan_name, year, month;
 6. What features or improvements would have made you stay?
 (Open-ended)
 
-
 	
 ### 5. What business levers could the Foodie-Fi team use to reduce the customer churn rate? How would you validate the effectiveness of your ideas?
 
@@ -599,6 +577,4 @@ ORDER BY plan_name, year, month;
 	- Churn rate
 	- Conversion rate
 
-</details>
-</details>
 
