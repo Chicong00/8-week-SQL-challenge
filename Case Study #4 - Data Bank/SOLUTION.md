@@ -1,11 +1,9 @@
 # 🏦 Data Bank: Solution
 
-💻 Work performed on MS SQL Server 💻
-
 [SQL Syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/adb92f99774c36d5c6eba7a5f88745372e8253a0/Case%20Study%20%234%20-%20Data%20Bank/Data_bank.sql)
 
-### A. Customer Nodes Exploration
-1. How many unique nodes are there on the Data Bank system?
+## A. Customer Nodes Exploration
+### 1. How many unique nodes are there on the Data Bank system?
 ````sql
 SELECT count(distinct node_id) unique_node_count
 from data_bank.customer_nodes;
@@ -14,7 +12,7 @@ from data_bank.customer_nodes;
 |---|
 |5|
   
-2. What is the number of nodes per region?
+### 2. What is the number of nodes per region?
 ````sql
 SELECT 
     region_name,
@@ -33,7 +31,7 @@ order by number_of_nodes desc ;
 |Asia|	665|
 |Europe|	616|
 
-3. How many customers are allocated to each region?
+### 3. How many customers are allocated to each region?
 ````sql
 SELECT 
     region_name,
@@ -52,7 +50,7 @@ order by customer_count desc;
 |Asia|	95|
 |Europe|	88|
   
-4. How many days on average are customers reallocated to a different node?
+### 4. How many days on average are customers reallocated to a different node?
 ````sql
 WITH node_diff AS (
   SELECT 
@@ -77,12 +75,12 @@ FROM sum_diff_cte;
 |---|
 |24|  
   
-5. What is the median, 80th and 95th percentile for this same reallocation days metric for each region?  
+### 5. What is the median, 80th and 95th percentile for this same reallocation days metric for each region?  
   
 
-### B. Customer Transactions
+## B. Customer Transactions
   
-1. What is the unique count and total amount for each transaction type?
+### 1. What is the unique count and total amount for each transaction type?
 ````sql
 select 
 	txn_type,
@@ -97,7 +95,7 @@ group by txn_type
 |withdrawal|	1580|	793003|
 |deposit|	2671|	1359168|
   
-2. What is the average total historical deposit counts and amounts for all customers?
+### 2. What is the average total historical deposit counts and amounts for all customers?
 ````sql
 with deposit_type as 
 (
@@ -118,7 +116,7 @@ from deposit_type;
 |---|---|
 |5|	509  |
   
-3. For each month - how many Data Bank customers make more than 1 deposit and either 1 purchase or 1 withdrawal in a single month?
+### 3. For each month - how many Data Bank customers make more than 1 deposit and either 1 purchase or 1 withdrawal in a single month?
 ````sql
 with cte as (
 select 
@@ -147,7 +145,7 @@ ORDER BY month_no;
 |3|	113|
 |4|	50|
   
-4. What is the closing balance for each customer at the end of the month?
+### 4. What is the closing balance for each customer at the end of the month?
 Closing balance = opening balance + deposits - withdrawals - purchases
 
 ```sql
@@ -200,7 +198,7 @@ First 5 customers
 | 5           | 1        | 1/31/2020    | 954             |
 
 
-5. What is the percentage of customers who increase their closing balance by more than 5%? 
+### 5. What is the percentage of customers who increase their closing balance by more than 5%? 
 
 - Step 1: Use the query in #4 to calculate the closing balance 
 - Step 2: Add the previous closing balance column by using the LAG() function
@@ -258,9 +256,9 @@ from closing_balance_change;
 |---|
 |21.31|
   
-### C. Data Allocation Challenge
+## C. Data Allocation Challenge
 
-### D. Extra Challenge
+## D. Extra Challenge
 
-### E. Extension Request
+## E. Extension Request
 
