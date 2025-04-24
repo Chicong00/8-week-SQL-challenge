@@ -9,7 +9,7 @@ SELECT
   TO_DATE(week_date, 'DD/MM/YY') AS week_date, -- convert week_date to date format
   DATE_PART('week', TO_DATE(week_date, 'DD/MM/YY')) AS week_number, -- add week_number column
   DATE_PART('month', TO_DATE(week_date, 'DD/MM/YY')) AS month_number, -- add month_number column
-  DATE_PART('year', TO_DATE(week_date, 'DD/MM/YY')) AS calendar_year, -- add year_calendar column
+  DATE_PART('year', TO_DATE(week_date, 'DD/MM/YY')) AS calendar_year, -- add calendar_year column
   region, 
   platform, 
   segment,
@@ -33,37 +33,49 @@ select * from data_mart.clean_weekly_sales limit 10;
 /*B. Data Exploration*/
 
 --1. What day of the week is used for each week_date value?
-select distinct
-	DATENAME(dw,week_date) day_of_week
-from data_mart.clean_weekly_sales
+-- Day name of the week
+SELECT DISTINCT(TO_CHAR(week_date, 'day')) AS week_day 
+FROM data_mart.clean_weekly_sales;
 
 --2. What range of week numbers are missing from the dataset?
 -- Create a table with the number of 1 to 52 corresponding to 52 weeks in the year
-declare @startnum int = 1
-declare @endnum int = 52;
-with allweeks as 
-(
-	select @startnum as weeknum
-	union all
-	select weeknum+1 from allweeks where weeknum+1 <= @endnum
-)
---select * from allweeks
 
--- Take the week number from clean_weekly_sales to compare with values in allweeks. Null rows are missing weeks
-select distinct weeknum, week_number
-from allweeks a 
-left join data_mart.clean_weekly_sales c
-on a.weeknum = c.week_number
-where week_number is null
-order by weeknum
+-- Option 1: Using a recursive CTE to generate week numbers from 1 to 52
+WITH RECURSIVE allweeks AS (
+  SELECT 1 AS weeknum
+  UNION ALL
+  SELECT weeknum + 1
+  FROM allweeks
+  WHERE weeknum + 1 <= 52
+)
+
+SELECT DISTINCT a.weeknum, c.week_number
+FROM allweeks a
+LEFT JOIN data_mart.clean_weekly_sales c
+  ON a.weeknum = c.week_number
+WHERE c.week_number IS NULL
+ORDER BY a.weeknum;
+
+-- Option 2: Using generate_series function to create a series of week numbers
+with allweeks as
+(
+  SELECT generate_series(1, 52) AS weeknum
+)
+SELECT DISTINCT a.weeknum, c.week_number
+FROM allweeks a
+LEFT JOIN data_mart.clean_weekly_sales c
+  ON a.weeknum = c.week_number
+WHERE c.week_number IS NULL
+ORDER BY a.weeknum;
+
 
 --3. How many total transactions were there for each year in the dataset?
 select 
-	year_calendar,
+	calendar_year,
 	sum(transactions) total_transactions
 from data_mart.clean_weekly_sales
-group by year_calendar
-order by year_calendar desc
+group by calendar_year
+order by 1 DESC, 2 DESC;
 
 --4. What is the total sales for each region for each month?
 select
@@ -72,77 +84,110 @@ select
 	sum(sales) total_sales
 from data_mart.clean_weekly_sales
 group by region, month_number
-order by region, month_number
+order by region, month_number;
 
 --5. What is the total count of transactions for each platform
 select 
 	platform,
 	sum(transactions) total_transactions
 from data_mart.clean_weekly_sales
-group by platform
+group by platform;
 
 --6. What is the percentage of sales for Retail vs Shopify for each month?
-
+-- Option 1: No pivot
 with sale as
 (
 select 
-	year_calendar,
+	calendar_year,
 	month_number,
 	platform,
 	sum(sales) sales,
-	sum(sum(sales)) over (partition by year_calendar, month_number) total_sales
+	sum(sum(sales)) over (partition by calendar_year, month_number) total_sales
 from data_mart.clean_weekly_sales
-group by year_calendar,month_number, platform
+group by calendar_year,month_number, platform
 )
 select 
-	year_calendar,
-	month_number,platform, sum(sales) sales,
-	sum(total_sales) total_sales,
-	convert(float,round(100.0*sum(sales)/sum(total_sales),2)) Percentage_sales
+	calendar_year,
+	month_number,
+	platform, 
+	round(100.0*sum(sales)/sum(total_sales),2) Percentage_sales
 from sale
-group by year_calendar,month_number, platform
-order by year_calendar desc ,month_number asc 
+group by calendar_year, month_number, platform
+order by calendar_year, month_number; 
+
+-- Option 2: Pivot
+with sale as
+(
+select 
+	calendar_year,
+	month_number,
+	platform,
+	sum(sales) sales,
+	sum(sum(sales)) over (partition by calendar_year, month_number) total_sales
+from data_mart.clean_weekly_sales
+group by calendar_year,month_number, platform
+)
+select 
+	calendar_year,
+	month_number,
+	round(100*sum(case WHEN platform = 'Retail' THEN sales else 0 end)/max(total_sales),2) as retail_sales_pct,
+	round(100*sum(case WHEN platform = 'Shopify' THEN sales else 0 end)/max(total_sales),2) as shopify_sales_pct
+from sale
+group by calendar_year, month_number
+order by calendar_year, month_number; 
 
 --7. What is the percentage of sales by demographic for each year in the dataset?
 with demo as 
 (
 select 
-	year_calendar,
+	calendar_year,
 	demographic,
 	sum(sales) year_sales
 from data_mart.clean_weekly_sales
-group by year_calendar, demographic
+group by calendar_year, demographic
 )
 select 
-	year_calendar,
+	calendar_year,
 	sum(year_sales) total_sales,
 	cast(100.0*sum(case when demographic = 'Families' then year_sales end)/sum(year_sales) as decimal(5,2)) as pct_fam,
 	cast(100.0*sum(case when demographic = 'Couples' then year_sales end)/sum(year_sales) as decimal(5,2))as pct_coup,
-	cast(100.0*sum(case when demographic = 'Unknown' then year_sales end)/sum(year_sales) as decimal(5,2))as pct_unkn
+	cast(100.0*sum(case when demographic = 'unknown' then year_sales end)/sum(year_sales) as decimal(5,2))as pct_unkn
 from demo
-group by year_calendar
-order by year_calendar desc
+group by calendar_year
+order by calendar_year desc;
 
 --8. Which age_band and demographic values contribute the most to Retail sales?
+
 select 
 	age_band,
 	demographic,
 	sum(sales) sales,
-	cast(100.0*sum(sales)/(select sum(sales) from data_mart.clean_weekly_sales where platform = 'Retail') as decimal(5,2)) contribution
+	cast(100.0*sum(sales)/(select sum(sales) from data_mart.clean_weekly_sales where platform = 'Retail') as decimal(5,2)) contribution_pct
 from data_mart.clean_weekly_sales	
-where platform = 'Retail'
 group by age_band, demographic
-order by contribution desc
+order by contribution_pct desc;
 
 --9. Can we use the avg_transaction column to find the average transaction size for each year for Retail vs Shopify? If not - how would you calculate it instead?
+-- Option 1: without pivot
 SELECT 
-  year_calendar, 
+  calendar_year, 
   platform, 
-  ROUND(AVG(avg_transaction),0) AS avg_transaction_row, 
   SUM(sales) / sum(transactions) AS avg_transaction_group
 FROM data_mart.clean_weekly_sales
-GROUP BY year_calendar, platform
-ORDER BY year_calendar, platform;
+GROUP BY calendar_year, platform
+ORDER BY calendar_year, platform;
+
+-- Option 2: with pivot
+SELECT
+ calendar_year,
+ round(sum(case when platform = 'Retail' then sales else 0 end)
+ / sum(case when platform = 'Retail' then transactions else 0 end)) avg_retail_transaction,
+ round(sum(case when platform = 'Shopify' then sales else 0 end)
+ / sum(case when platform = 'Shopify' then transactions else 0 end)) avg_shopify_transaction
+FROM data_mart.clean_weekly_sales
+GROUP BY 1
+ORDER BY 1 DESC;
+
 
 /*Before & After Analysis*/
 
@@ -161,7 +206,7 @@ select
 	sum(case when week_number between @baselineweek-4 and @baselineweek-1 then sales end) before_sales,
 	sum(case when week_number between @baselineweek and @baselineweek+3 then sales end) after_sales
 from data_mart.clean_weekly_sales
-where year_calendar = 2020
+where calendar_year = 2020
 )
 select 
 	*,
@@ -180,7 +225,7 @@ select
 	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
 	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
 from data_mart.clean_weekly_sales
-where year_calendar = 2020
+where calendar_year = 2020
 )
 select 
 	*,
@@ -197,17 +242,17 @@ where week_date = '2020-06-15');
 with cte as
 (
 select 
-	year_calendar,
+	calendar_year,
 	sum(case when week_number between @baselineweek-4 and @baselineweek-1 then sales end) before_sales,
 	sum(case when week_number between @baselineweek and @baselineweek+3 then sales end) after_sales
 from data_mart.clean_weekly_sales
-group by year_calendar
+group by calendar_year
 )
 select 
 	*,
 	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
 from cte  
-order by year_calendar
+order by calendar_year
 
 --12 weeks before and after
 declare @baselineweek int =
@@ -218,17 +263,17 @@ where week_date = '2020-06-15');
 with cte as
 (
 select 
-	year_calendar,
+	calendar_year,
 	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
 	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
 from data_mart.clean_weekly_sales
-group by year_calendar
+group by calendar_year
 )
 select 
 	*,
 	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
 from cte 
-order by year_calendar
+order by calendar_year
 
 /*D. Bonus Question*/
 /*Which areas of the business have the highest negative impact in sales metrics performance in 2020 for the 12 week before and after period?
