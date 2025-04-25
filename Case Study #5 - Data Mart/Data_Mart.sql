@@ -1,4 +1,4 @@
-﻿/*A.Data Cleansing */
+﻿/*1.Data Cleansing */
 
 select * from data_mart.weekly_sales limit 10;
 
@@ -30,7 +30,7 @@ FROM data_mart.weekly_sales
 
 select * from data_mart.clean_weekly_sales limit 10;
 
-/*B. Data Exploration*/
+/*2. Data Exploration*/
 
 --1. What day of the week is used for each week_date value?
 -- Day name of the week
@@ -189,91 +189,181 @@ GROUP BY 1
 ORDER BY 1 DESC;
 
 
-/*Before & After Analysis*/
+/*3. Before & After Analysis*/
 
 /*Taking the week_date value of 2020-06-15 as the baseline week where the Data Mart sustainable packaging changes came into effect.
 We would include all week_date values for 2020-06-15 as the start of the period after the change and the previous week_date values would be before*/
 
 --1. What is the total sales for the 4 weeks before and after 2020-06-15? What is the growth or reduction rate in actual values and percentage of sales?
-declare @baselineweek int =
-(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-with cte as
-(
-select 
-	sum(case when week_number between @baselineweek-4 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+3 then sales end) after_sales
-from data_mart.clean_weekly_sales
-where calendar_year = 2020
+with cte as (
+SELECT
+	CASE 
+		WHEN week_date < date '2020-06-15' THEN '4 weeks before 2020-06-15'
+		WHEN week_date = date '2020-06-15' THEN '2020-06-15'
+		WHEN week_date > date '2020-06-15' THEN '4 weeks after 2020-06-15'
+	END AS period,
+	sum(sales) as total_sales
+FROM data_mart.clean_weekly_sales
+where week_date BETWEEN date '2020-06-15' - interval '4 weeks' 
+					and date '2020-06-15' + interval '4 weeks'
+GROUP BY 1
 )
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from cte 
+SELECT * FROM cte
+ORDER BY 
+	CASE WHEN period = '4 weeks before 2020-06-15' THEN 1
+		WHEN period = '2020-06-15' THEN 2
+		WHEN period = '4 weeks after 2020-06-15' THEN 3 END;
 
 --2. What about the entire 12 weeks before and after?
-declare @baselineweek int =
-(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-with cte as
-(
-select 
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-where calendar_year = 2020
+with cte as (
+SELECT
+	CASE 
+		WHEN week_date < date '2020-06-15' THEN '12 weeks before 2020-06-15'
+		WHEN week_date = date '2020-06-15' THEN '2020-06-15'
+		WHEN week_date > date '2020-06-15' THEN '12 weeks after 2020-06-15'
+	END AS period,
+	sum(sales) as total_sales
+FROM data_mart.clean_weekly_sales
+where week_date BETWEEN date '2020-06-15' - interval '12 weeks' 
+					and date '2020-06-15' + interval '12 weeks'
+GROUP BY 1
 )
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from cte 
+SELECT * FROM cte
+ORDER BY 
+	CASE WHEN period = '12 weeks before 2020-06-15' THEN 1
+		WHEN period = '2020-06-15' THEN 2
+		WHEN period = '12 weeks after 2020-06-15' THEN 3 END;
 
 --3. How do the sale metrics for these 2 periods before and after compare with the previous years in 2018 and 2019?
---4 weeks before and after
-declare @baselineweek int =
-(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-with cte as
-(
-select 
-	calendar_year,
-	sum(case when week_number between @baselineweek-4 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+3 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by calendar_year
+------ Compare the periods in 2020 with the same periods in 2018 and 2019 sales metrics
+WITH periods AS (
+    SELECT 
+        '12 weeks before 15-06' AS period, 
+        date '2020-06-15' - interval '12 weeks' AS start_date, 
+        date '2020-06-15' - interval '1 day' AS end_date
+    UNION ALL
+    SELECT 
+        '12 weeks after 15-06', 
+        date '2020-06-15' + interval '1 day', 
+        date '2020-06-15' + interval '12 weeks'
+    UNION ALL
+    SELECT 
+        '4 weeks before 15-06', 
+        date '2020-06-15' - interval '4 weeks', 
+        date '2020-06-15' - interval '1 day'
+    UNION ALL
+    SELECT 
+        '4 weeks after 15-06', 
+        date '2020-06-15' + interval '1 day', 
+        date '2020-06-15' + interval '4 weeks'
 )
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from cte  
-order by calendar_year
+, sales_by_year AS (
+SELECT 
+        p.period,
+        EXTRACT(YEAR FROM ws.week_date)::int AS year,
+        SUM(ws.sales) AS total_sales
+    FROM periods p
+    JOIN data_mart.clean_weekly_sales ws 
+        ON ws.week_date BETWEEN p.start_date AND p.end_date
+        OR ws.week_date BETWEEN (p.start_date - interval '1 year') AND (p.end_date - interval '1 year')
+        OR ws.week_date BETWEEN (p.start_date - interval '2 years') AND (p.end_date - interval '2 years')
+    WHERE EXTRACT(YEAR FROM ws.week_date)::int IN (2018, 2019, 2020)
+    GROUP BY p.period, year
+),
+final AS (
+    SELECT 
+        period,
+        MAX(CASE WHEN year = 2020 THEN total_sales END) AS sales_2020,
+        MAX(CASE WHEN year = 2019 THEN total_sales END) AS sales_2019,
+        MAX(CASE WHEN year = 2018 THEN total_sales END) AS sales_2018
+    FROM sales_by_year
+    GROUP BY period
+)
+SELECT 
+    period as period_in_2020, 
+    ROUND(sales_2020::numeric / NULLIF(sales_2018, 0), 2) AS compare_with_2018,
+    ROUND(sales_2020::numeric / NULLIF(sales_2019, 0), 2) AS compare_with_2019
+FROM final
+ORDER BY 
+    CASE 
+        WHEN period = '12 weeks before 2020-06-15' THEN 1
+        WHEN period = '12 weeks after 2020-06-15' THEN 2
+        WHEN period = '4 weeks before 2020-06-15' THEN 3
+        WHEN period = '4 weeks after 2020-06-15' THEN 4
+    END;
 
---12 weeks before and after
-declare @baselineweek int =
-(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-with cte as
-(
-select 
-	calendar_year,
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by calendar_year
+------ Compare the periods in 2020 with the full year 2018 and 2019 sales metrics
+-- Step 1: Define the target periods in 2020
+WITH periods_2020 AS (
+    SELECT 
+        '12 weeks before 2020-06-15' AS period, 
+        date '2020-06-15' - interval '12 weeks' AS start_date, 
+        date '2020-06-15' - interval '1 day' AS end_date
+    UNION ALL
+    SELECT 
+        '12 weeks after 2020-06-15', 
+        date '2020-06-15' + interval '1 day', 
+        date '2020-06-15' + interval '12 weeks'
+    UNION ALL
+    SELECT 
+        '4 weeks before 2020-06-15', 
+        date '2020-06-15' - interval '4 weeks', 
+        date '2020-06-15' - interval '1 day'
+    UNION ALL
+    SELECT 
+        '4 weeks after 2020-06-15', 
+        date '2020-06-15' + interval '1 day', 
+        date '2020-06-15' + interval '4 weeks'
+),
+
+-- Step 2: Get total sales for each 2020 period
+sales_2020_periods AS (
+    SELECT 
+        p.period,
+        SUM(ws.sales) AS sales_2020
+    FROM periods_2020 p
+    JOIN data_mart.clean_weekly_sales ws
+        ON ws.week_date BETWEEN p.start_date AND p.end_date
+    WHERE EXTRACT(YEAR FROM ws.week_date) = 2020
+    GROUP BY p.period
+),
+
+-- Step 3: Get total sales for full year 2018 and 2019
+total_sales_by_year AS (
+    SELECT 
+        EXTRACT(YEAR FROM week_date)::int AS year,
+        SUM(sales) AS total_sales
+    FROM data_mart.clean_weekly_sales
+    WHERE EXTRACT(YEAR FROM week_date)::int IN (2018, 2019)
+    GROUP BY year
+),
+
+-- Step 4: Join and calculate ratio
+final AS (
+    SELECT 
+        s.period,
+        s.sales_2020,
+        MAX(CASE WHEN y.year = 2018 THEN y.total_sales END) AS full_year_2018,
+        MAX(CASE WHEN y.year = 2019 THEN y.total_sales END) AS full_year_2019
+    FROM sales_2020_periods s
+    CROSS JOIN total_sales_by_year y
+    GROUP BY s.period, s.sales_2020
 )
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from cte 
-order by calendar_year
+
+-- Step 5: Output final ratio table
+SELECT 
+    period,
+    ROUND(sales_2020::numeric *100/ NULLIF(full_year_2018, 0), 2) AS compare_with_2018,
+    ROUND(sales_2020::numeric *100/ NULLIF(full_year_2019, 0), 2) AS compare_with_2019
+FROM final
+ORDER BY 
+    CASE 
+        WHEN period = '12 weeks before 06-15' THEN 1
+        WHEN period = '12 weeks after 06-15' THEN 2
+        WHEN period = '4 weeks before 06-15' THEN 3
+        WHEN period = '4 weeks after 06-15' THEN 4
+    END;
+
 
 /*D. Bonus Question*/
 /*Which areas of the business have the highest negative impact in sales metrics performance in 2020 for the 12 week before and after period?
