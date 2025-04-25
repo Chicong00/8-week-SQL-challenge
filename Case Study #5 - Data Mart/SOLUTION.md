@@ -470,3 +470,144 @@ ORDER BY
 | 4 weeks after 2020-06-15   | 18.1              | 16.99             |
 | 12 weeks before 2020-06-15 | 55.25             | 51.84             |
 | 12 weeks after 2020-06-15  | 49.65             | 46.59             |
+
+
+## 4. Bonus question
+Which areas of the business have the highest negative impact in sales metrics performance in 2020 for the 12 week before and after period?
+- region
+- platform
+- age_band
+- demographic
+- customer_type
+
+=> Compare total sales after and before 2020-06-15 of each business area => Choose worst-performing segment per business area by using rank()
+
+```sql
+-- Region
+WITH region_cte AS (
+  SELECT
+    'Region' AS business_areas,
+    region AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY region
+),
+
+-- Platform
+platform_cte AS (
+  SELECT
+    'Platform' AS business_areas,
+    platform AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY platform
+),
+
+-- Age Band
+age_band_cte AS (
+  SELECT
+    'Age Band' AS business_areas,
+    age_band AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY age_band
+),
+
+-- Demographic
+demo_cte AS (
+  SELECT
+    'Demographic' AS business_areas,
+    demographic AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY demographic
+),
+
+-- Customer Type
+cust_type_cte AS (
+  SELECT
+    'Customer Type' AS business_areas,
+    customer_type AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY customer_type
+),
+
+-- Combine all
+combined AS (
+  SELECT * FROM region_cte
+  UNION ALL
+  SELECT * FROM platform_cte
+  UNION ALL
+  SELECT * FROM age_band_cte
+  UNION ALL
+  SELECT * FROM demo_cte
+  UNION ALL
+  SELECT * FROM cust_type_cte
+)
+-- Final select with pct_change and rank
+, rank_cte as ( 
+SELECT
+  *,
+  ROUND(100.0 * (sales_12_weeks_after - sales_12_weeks_before) / sales_12_weeks_before::NUMERIC, 2) AS pct_change,
+  RANK() OVER (PARTITION BY business_areas ORDER BY 
+    (sales_12_weeks_after - sales_12_weeks_before) / sales_12_weeks_before::NUMERIC ASC
+  ) AS pct_rank
+FROM combined
+)
+SELECT 
+    business_areas,
+    segment,
+    sales_12_weeks_before,
+    sales_12_weeks_after,
+    pct_change
+FROM rank_cte
+WHERE pct_rank = 1
+ORDER BY pct_change DESC;
+```
+The worst-performing segment per business area when doing a comparison of sales metrics between 12 weeks before 2020-06-15 and 12 weeks after 2020-06-15:
+
+| business_areas | segment | sales_12_weeks_before | sales_12_weeks_after | pct_change |
+|----------------|---------|-----------------------|----------------------|------------|
+| Platform       | Retail  | 6906861113            | 6188030612           | -10.41     |
+| Customer Type  | Guest   | 2573436301            | 2292350880           | -10.92     |
+| Age Band       | unknown | 2764354464            | 2455309572           | -11.18     |
+| Demographic    | unknown | 2764354464            | 2455309572           | -11.18     |
+| Region         | ASIA    | 1637244466            | 1454048362           | -11.19     |
+
+

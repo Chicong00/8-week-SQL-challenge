@@ -11,7 +11,8 @@ SELECT
   DATE_PART('month', TO_DATE(week_date, 'DD/MM/YY')) AS month_number, -- add month_number column
   DATE_PART('year', TO_DATE(week_date, 'DD/MM/YY')) AS calendar_year, -- add calendar_year column
   region, 
-  platform, 
+  platform,
+  customer_type, 
   segment,
   CASE 
     WHEN RIGHT(segment,1) = '1' THEN 'Young Adults'
@@ -287,7 +288,8 @@ FROM final
 ORDER BY 
     CASE 
         WHEN period = '12 weeks before 2020-06-15' THEN 1
-        WHEN period = '12 weeks after 2020-06-15' THEN 2
+        WHEN period = '
+        ' THEN 2
         WHEN period = '4 weeks before 2020-06-15' THEN 3
         WHEN period = '4 weeks after 2020-06-15' THEN 4
     END;
@@ -367,125 +369,126 @@ ORDER BY
 
 /*D. Bonus Question*/
 /*Which areas of the business have the highest negative impact in sales metrics performance in 2020 for the 12 week before and after period?
-
 region
 platform
 age_band
 demographic
-customer_type*/
+customer_type*/;
 
---Find the week_number of '2020-06-15' (@weekNum=25)
-declare @baselineweek int 
-set @baselineweek
-=(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
+-- Region
+WITH region_cte AS (
+  SELECT
+    'Region' AS business_areas,
+    region AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY region
+),
 
--- region
-with region as
-(
-select 
-	region,
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by region
+-- Platform
+platform_cte AS (
+  SELECT
+    'Platform' AS business_areas,
+    platform AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY platform
+),
+
+-- Age Band
+age_band_cte AS (
+  SELECT
+    'Age Band' AS business_areas,
+    age_band AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY age_band
+),
+
+-- Demographic
+demo_cte AS (
+  SELECT
+    'Demographic' AS business_areas,
+    demographic AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY demographic
+),
+
+-- Customer Type
+cust_type_cte AS (
+  SELECT
+    'Customer Type' AS business_areas,
+    customer_type AS segment,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' - INTERVAL '12 weeks'
+                        AND DATE '2020-06-15' - INTERVAL '1 day'
+      THEN sales END) AS sales_12_weeks_before,
+    SUM(CASE
+      WHEN week_date BETWEEN DATE '2020-06-15' + INTERVAL '1 day'
+                        AND DATE '2020-06-15' + INTERVAL '12 weeks'
+      THEN sales END) AS sales_12_weeks_after
+  FROM data_mart.clean_weekly_sales
+  GROUP BY customer_type
+),
+
+-- Combine all
+combined AS (
+  SELECT * FROM region_cte
+  UNION ALL
+  SELECT * FROM platform_cte
+  UNION ALL
+  SELECT * FROM age_band_cte
+  UNION ALL
+  SELECT * FROM demo_cte
+  UNION ALL
+  SELECT * FROM cust_type_cte
 )
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from region 
-order by pct_change 
-
--- platform
-declare @baselineweek int 
-set @baselineweek
-=(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-
-with platform as
-(
-select 
-	platform,
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by platform
+-- Final select with pct_change and rank
+, rank_cte as ( 
+SELECT
+  *,
+  ROUND(100.0 * (sales_12_weeks_after - sales_12_weeks_before) / sales_12_weeks_before::NUMERIC, 2) AS pct_change,
+  RANK() OVER (PARTITION BY business_areas ORDER BY 
+    (sales_12_weeks_after - sales_12_weeks_before) / sales_12_weeks_before::NUMERIC ASC
+  ) AS pct_rank
+FROM combined
 )
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from platform 
-order by pct_change 
+SELECT 
+    business_areas,
+    segment,
+    sales_12_weeks_before,
+    sales_12_weeks_after,
+    pct_change
+FROM rank_cte
+WHERE pct_rank = 1
+ORDER BY pct_change DESC;
 
--- age_band
-declare @baselineweek int 
-set @baselineweek
-=(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-
-with age_band as
-(
-select 
-	age_band,
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by age_band
-)
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from age_band 
-order by pct_change 
-
--- demographic
-declare @baselineweek int 
-set @baselineweek
-=(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-
-with demographic as
-(
-select 
-	demographic,
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by demographic
-)
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from demographic 
-order by pct_change 
-
--- customer_type
-declare @baselineweek int 
-set @baselineweek
-=(select 
-	distinct week_number
-from data_mart.clean_weekly_sales
-where week_date = '2020-06-15');
-
-with customer as
-(
-select 
-	customer_type,
-	sum(case when week_number between @baselineweek-12 and @baselineweek-1 then sales end) before_sales,
-	sum(case when week_number between @baselineweek and @baselineweek+11 then sales end) after_sales
-from data_mart.clean_weekly_sales
-group by customer_type
-)
-select 
-	*,
-	cast(100.0*(after_sales-before_sales)/before_sales as decimal(5,2)) pct_change
-from customer 
-order by pct_change 
