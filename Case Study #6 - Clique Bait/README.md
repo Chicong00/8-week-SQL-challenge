@@ -37,3 +37,4 @@ In this case study - you are required to support Danny’s vision and analyse hi
 <img width="792" alt="image" src="https://user-images.githubusercontent.com/81607668/134623354-0977d67c-fc61-4e61-90ee-f24a29682a9b.png">
 
 ## Question and Solution
+[SQL syntax](https://github.com/Chicong00/8-week-SQL-challenge/blob/main/Case%20Study%20%236%20-%20Clique%20Bait/Clique_Bait.sql)
