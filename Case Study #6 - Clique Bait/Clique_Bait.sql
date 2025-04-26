@@ -6,7 +6,7 @@ from clique_bait.users;
 --2. How many cookies does each user have on average?
 -- Opt1:
 select 
-	cast(COUNT(cookie_id)/count(distinct user_id) as decimal(5,2)) avg_cookies_per_user
+	round(COUNT(cookie_id)/count(distinct user_id)::numeric,2) avg_cookies_per_user
 from clique_bait.users;
 
 -- Opt2:
@@ -19,98 +19,113 @@ from clique_bait.users
 group by user_id
 )
 select cast(avg(cookie_count) as decimal(5,2)) 
-from clique_bait.cookie 
+from cookie; 
 
 --3. What is the unique number of visits by all users per month?
 select
-	DATEPART(month,event_time) as month,
+	DATE_PART('month',event_time) as month_number,
 	count(distinct visit_id) visit_count
 from clique_bait.events e 
-group by DATEPART(month,event_time)
-order by month
+group by DATE_PART('month',event_time)
+order by 1;
 
 --4. What is the number of events for each event type?
 select 
 	event_name,
 	count(*) event_count
 from clique_bait.events e 
-join event_identifier ei
+join clique_bait.event_identifier ei
 on e.event_type = ei.event_type
 group by event_name
-order by event_count desc
+order by event_count desc;
 
 --5. What is the percentage of visits which have a purchase event?
 select	
 	event_name,
 	cast(100.0*count(distinct visit_id)/(select count(distinct visit_id) from clique_bait.events) as decimal(5,2)) pct_visit_count
 from clique_bait.events e
-join event_identifier ei
+join clique_bait.event_identifier ei
 on e.event_type = ei.event_type
 where event_name = 'Purchase'
-group by event_name
+group by event_name;
 
 
 --6. What is the percentage of visits which view the checkout page but do not have a purchase event?
+-- Number of visits which view the checkout page
 with checkout_view as 
 (
 select 
 	count(distinct visit_id) visit_count
 from clique_bait.events e
-left join page_hierarchy p
-on e.page_id = p.page_id
-left join event_identifier ei
-on e.event_type = ei.event_type
+left join clique_bait.page_hierarchy p on e.page_id = p.page_id
+left join clique_bait.event_identifier ei on e.event_type = ei.event_type
 where ei.event_name = 'Page View' and p.page_name = 'Checkout'
 )
 select 
-	cast(100-100.0*count(distinct visit_id)/(select visit_count from clique_bait.checkout_view) as decimal(5,2)) pct_view_checkout_not_purchase
+	cast(100-100.0*count(distinct visit_id)/(select visit_count from checkout_view) as decimal(5,2)) pct_view_checkout_not_purchase
 from clique_bait.events e 
-join event_identifier ei
+join clique_bait.event_identifier ei
 on e.event_type = ei.event_type
-where event_name = 'Purchase'
+where event_name = 'Purchase'; --Filter out the visits with purchase event 
 
 --7. What are the top 3 pages by number of views?
-select  top 3
+with cte as (
+select 
 	p.page_name,
-	count(visit_id) visit_count 
+	count(visit_id) visit_count,
+	rank() over (order by count(visit_id) desc) as ranking
 from clique_bait.events e
-join page_hierarchy p
-on e.page_id = p.page_id
-join event_identifier ei
-on e.event_type = ei.event_type
+join clique_bait.page_hierarchy p on e.page_id = p.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
 where event_name = 'Page View'
 group by page_name
 order by visit_count desc
+)
+SELECT
+	page_name,
+	visit_count
+FROM cte 
+WHERE ranking  < 4;
+
 
 --8. What is the number of views and cart adds for each product category?
 SELECT 
   ph.product_category, 
-  SUM(CASE WHEN e.event_type = 1 THEN 1 ELSE 0 END) AS page_views,
-  SUM(CASE WHEN e.event_type = 2 THEN 1 ELSE 0 END) AS cart_adds
+  SUM(CASE WHEN e.event_type = 1 THEN 1 ELSE 0 END) AS page_views_count,
+  SUM(CASE WHEN e.event_type = 2 THEN 1 ELSE 0 END) AS cart_adds_count
 from clique_bait.events AS e
-JOIN page_hierarchy AS ph
-ON e.page_id = ph.page_id
+JOIN clique_bait.page_hierarchy AS ph ON e.page_id = ph.page_id
 WHERE ph.product_category IS NOT NULL
 GROUP BY ph.product_category
-ORDER BY page_views DESC;
+ORDER BY 2 DESC;
 
 --9. What are the top 3 products by purchases?
-select top 3
+with cte as (
+select 
 	ph.page_name,
 	ph.product_category,
-	count(*) purchase_count
+	count(*) purchase_count,
+	rank() over (order by count(*) desc) ranking
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 -- Step1 : Products are added to cart 
-where event_name = 'Add to cart'
+where event_name = 'Add to Cart'
 -- Step 2: Add-to-cart products are purchased
 and e.visit_id in 
 	(select e.visit_id from clique_bait.events e
-	join event_identifier ei on e.event_type = ei.event_type
+	join clique_bait.event_identifier ei on e.event_type = ei.event_type
 	where event_name = 'Purchase')
 group by ph.page_name, ph.product_category 
 order by 3 desc
+)
+SELECT
+	page_name,
+	product_category,
+	purchase_count
+FROM cte 
+WHERE ranking  < 4;
+
 
 -- Customers who have a 'purchase' action and events in their history
 with purchase as 
