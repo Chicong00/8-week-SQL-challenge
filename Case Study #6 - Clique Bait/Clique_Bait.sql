@@ -130,33 +130,34 @@ WHERE ranking  < 4;
 -- Customers who have a 'purchase' action and events in their history
 with purchase as 
 (
-select e.visit_id from clique_bait.events e
-	join event_identifier ei on e.event_type = ei.event_type
-	where event_name = 'Purchase'
+select e.visit_id, e.event_time
+from clique_bait.events e
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+where event_name = 'Purchase'
 )
-select user_id, e.visit_id, ph.page_name, ei.event_name, sequence_number
+select user_id, e.visit_id, ph.page_name, ei.event_name, sequence_number, e.event_time
 from clique_bait.events e 
 left join purchase p on e.visit_id = p.visit_id 
-join users u on e.cookie_id = u.cookie_id
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
-where p.visit_id is not null
+join clique_bait.users u on e.cookie_id = u.cookie_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
+where p.visit_id is not null 
+and user_id = 392;
 
 -- Customers who do not have 'purchase' action and events in their history
 with purchase as 
 (
 select e.visit_id from clique_bait.events e
-	join event_identifier ei on e.event_type = ei.event_type
+	join clique_bait.event_identifier ei on e.event_type = ei.event_type
 	where event_name = 'Purchase'
 )
 select user_id, e.visit_id, ph.page_name, ei.event_name, sequence_number
 from clique_bait.events e 
 left join purchase p on e.visit_id = p.visit_id 
 join users u on e.cookie_id = u.cookie_id
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where p.visit_id is null
-
 
 /*2. Product Funnel Analysis*/
 -- How many times was each product viewed?
@@ -164,9 +165,9 @@ where p.visit_id is null
 -- How many times was each product added to a cart but not purchased (abandoned)?
 -- How many times was each product purchased?
 
-drop table if exists #product_info
-drop table #product_info
-
+drop table if exists clique_bait.product_info;
+create table clique_bait.product_info as
+(
 with product_view_add as
 (
 select 
@@ -174,8 +175,8 @@ select
 	sum(case when event_name = 'Page View' then 1 end) as viewed,
 	sum(case when event_name = 'Add to Cart' then 1 end) as added_to_cart
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where ph.product_category is not null
 group by ph.product_id, ph.page_name, ph.product_category
 ),
@@ -183,12 +184,12 @@ product_abandoned as
 (
 select ph.product_id, ph.page_name, ph.product_category, count(*) abandoned
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where ei.event_name = 'Add to Cart' 
 	and e.visit_id not in (select e1.visit_id 
 							from clique_bait.events e1 
-							join event_identifier ei1 on e1.event_type = ei1.event_type
+							join clique_bait.event_identifier ei1 on e1.event_type = ei1.event_type
 							where event_name = 'Purchase')
 group by ph.product_id, ph.page_name, ph.product_category
 ),
@@ -196,12 +197,12 @@ product_purchased as
 (
 select ph.product_id, ph.page_name, ph.product_category, count(*) purchased
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where ei.event_name = 'Add to Cart' 
 	and e.visit_id in (select e1.visit_id 
 							from clique_bait.events e1 
-							join event_identifier ei1 on e1.event_type = ei1.event_type
+							join clique_bait.event_identifier ei1 on e1.event_type = ei1.event_type
 							where event_name = 'Purchase')
 group by ph.product_id, ph.page_name, ph.product_category
 )
@@ -209,17 +210,19 @@ select
 	pva.product_id,pva.page_name,pva.product_category,pva.viewed, pva.added_to_cart,
 	pa.abandoned,
 	pp.purchased
-into #product_info
-from clique_bait.product_view_add pva
+from product_view_add pva
 join product_abandoned pa on pva.product_id = pa.product_id
 join product_purchased pp on pva.product_id = pp.product_id
 order by pva.product_id asc
-
+);
 
 
 /*Additionally, create another table which further aggregates the data for the above points 
 but this time for each product category instead of individual products.*/
 
+DROP table IF EXISTS clique_bait.category_info;
+CREATE TABLE clique_bait.category_info AS
+(
 with product_info as
 (
 select 
@@ -227,8 +230,8 @@ select
 	sum(case when event_name = 'Page View' then 1 end) as viewd,
 	sum(case when event_name = 'Add to Cart' then 1 end) as added_to_cart
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where ph.product_category is not null
 group by  ph.product_category
 ),
@@ -236,12 +239,12 @@ product_abandoned as
 (
 select ph.product_category, count(*) abandoned
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where ei.event_name = 'Add to Cart' 
 	and e.visit_id not in (select e1.visit_id 
 							from clique_bait.events e1 
-							join event_identifier ei1 on e1.event_type = ei1.event_type
+							join clique_bait.event_identifier ei1 on e1.event_type = ei1.event_type
 							where event_name = 'Purchase')
 group by ph.product_category
 ),
@@ -249,22 +252,28 @@ product_purchased as
 (
 select ph.product_category, count(*) purchased
 from clique_bait.events e 
-join event_identifier ei on e.event_type = ei.event_type
-join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 where ei.event_name = 'Add to Cart' 
 	and e.visit_id in (select e1.visit_id 
 							from clique_bait.events e1 
-							join event_identifier ei1 on e1.event_type = ei1.event_type
+							join clique_bait.event_identifier ei1 on e1.event_type = ei1.event_type
 							where event_name = 'Purchase')
 group by ph.product_category
 )
 select 
-	pf.product_category,pf.viewd, pf.added_to_cart,
-	pa.abandoned,
-	pp.purchased
+	pf.product_category,
+	sum(pf.viewed) as total_viewed, 
+	sum(pf.added_to_cart) as total_added_to_cart,
+	sum(pa.abandoned) as total_abandoned,
+	sum(pp.purchased) as total_purchased
 from clique_bait.product_info pf
 join product_abandoned pa on pf.product_category = pa.product_category
 join product_purchased pp on pf.product_category = pp.product_category
+GROUP BY 1
+);
+
+SELECT * FROM clique_bait.category_info;
 
 --1. Which product had the most views, cart adds and purchases?
 
@@ -272,39 +281,45 @@ with views as
 (
 select *,
 	rank() over (order by viewed desc) ranking
-from clique_bait.#product_info
+from clique_bait.product_info
 )
-select *
-from clique_bait.views
-where ranking = 1
-;
-with cart_adds as 
+, cart_adds as 
 (
 select *,
 	rank() over (order by added_to_cart desc) ranking
-from clique_bait.#product_info
+from clique_bait.product_info
 )
-select *
-from clique_bait.cart_adds
-where ranking = 1
-;
-with purchases as 
+, purchases as 
 (
 select *,
 	rank() over (order by purchased desc) ranking
-from clique_bait.#product_info
+from clique_bait.product_info
 )
-select *
-from clique_bait.purchases
+select 
+	'Most views' as tag,
+	page_name as product_name
+from views
 where ranking = 1
+UNION ALL
+select 
+	'Most cart adds' as tag,
+	page_name as product_name
+from cart_adds
+where ranking = 1
+UNION ALL
+select 
+	'Most purchases' as tag,
+	page_name as product_name
+from purchases
+where ranking = 1;
 
 --2. Which product was most likely to be abandoned?
 with abandoned as 
 (
 select *, rank() over (order by abandoned desc) ranking
-from clique_bait.#product_info
+from clique_bait.product_info
 )
-select * from clique_bait.abandoned where ranking = 1 
+select page_name as product_name from abandoned where ranking = 1; 
 
 --3. Which product had the highest view to purchase percentage?
 with purchase_per_view_pct as 
@@ -313,21 +328,24 @@ select
 	page_name, product_category,
 	cast(100.0*purchased/viewed as decimal (5,2)) purchase_per_view_pct,
 	rank() over (order by 100.0*purchased/viewed desc) ranking
-from clique_bait.#product_info
+from clique_bait.product_info
 )
-select *
-from clique_bait.purchase_per_view_pct 
-where ranking = 1 
-
---4. What is the average conversion rate from clique_bait.view to cart add?
 select 
-	cast(avg(cast(100.0*added_to_cart/viewed as decimal (5,2))) as decimal (5,2)) avg_view_to_cart
-from clique_bait.#product_info
+	page_name as product_name
+	, product_category
+	, purchase_per_view_pct
+from purchase_per_view_pct 
+where ranking = 1; 
 
---5. What is the average conversion rate from clique_bait.cart add to purchase?
+--4. What is the average conversion rate from view to cart add?
 select 
-	cast(avg(cast(100.0*purchased/added_to_cart as decimal (5,2))) as decimal (5,2)) avg_cart_to_purchase
-from clique_bait.#product_info
+	round(avg(100.0*added_to_cart/viewed),2) avg_view_to_cart
+from clique_bait.product_info;
+
+--5. What is the average conversion rate from cart add to purchase?
+select 
+	round(avg(100.0*purchased/added_to_cart),2) avg_cart_to_purchase
+from clique_bait.product_info;
 
 
 /* 3. Campaigns Analysis */
@@ -350,8 +368,8 @@ select
 	STRING_AGG(case when ph.product_id is not null and event_name ='Add to Cart' then page_name end,', ') within group (order by e.sequence_number) cart_products
 from clique_bait.events e 
 join users u on e.cookie_id = u.cookie_id
-join event_identifier ei on e.event_type = ei.event_type
-left join page_hierarchy ph on e.page_id = ph.page_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+left join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
 left join campaign_identifier c on e.event_time between c.start_date and c.end_date
 where visit_id in (select visit_id from clique_bait.time_ where ranking = 1)
 group by user_id, visit_id, c.campaign_name
