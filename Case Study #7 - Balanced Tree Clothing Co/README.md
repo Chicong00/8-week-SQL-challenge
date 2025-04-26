@@ -84,8 +84,97 @@ Danny, the CEO of this trendy fashion company has asked you to assist the teamâ€
 
 ## Question and Solution
 ### A. High Level Sales Analysis
+#### 1. What was the total quantity sold for all products?
+```sql
+SELECT SUM(qty) AS total_quantity_sold
+FROM balanced_tree.sales;
+```
+|total_quantity_sold|
+|---|
+|45216|
+
+#### 2. What is the total generated revenue for all products before discounts?
+```sql
+SELECT SUM(price * qty) AS total_revenue_before_discounts
+FROM balanced_tree.sales;
+```
+|total_revenue_before_discounts|
+|---|
+|1289453|
+
+#### 3. What was the total discount amount for all products?
+```sql
+SELECT SUM(price * qty * discount)/100 AS total_discount_amount
+FROM balanced_tree.sales;
+```
+|total_discount_amount|
+|---|
+|156229|
 
 ### B. Transaction Analysis
+#### 1. How many unique transactions were there?
+```sql
+SELECT
+    COUNT(DISTINCT txn_id) AS unique_transactions
+FROM balanced_tree.sales;
+```
+|unique_transactions|
+|---|
+|2500|
+
+#### 2. What is the average unique products purchased in each transaction?
+```sql
+SELECT
+    SUM(qty)/ COUNT(DISTINCT txn_id) AS avg_unique_products_per_transaction
+FROM balanced_tree.sales;
+```
+|avg_unique_products_per_transaction|
+|---|
+|18|
+
+#### 3. What are the 25th, 50th and 75th percentile values for the revenue per transaction?
+```sql
+SELECT
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY price * qty) AS p25_revenue,
+    PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY price * qty) AS p50_revenue,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY price * qty) AS p75_revenue
+FROM balanced_tree.sales;
+```
+| p25_revenue | p50_revenue | p75_revenue |
+|-------------|-------------|-------------|
+| 38          | 65          | 116         |
+
+#### 4. What is the average discount value per transaction?
+```sql
+SELECT
+    round(AVG(price * qty * discount)/100,2) AS avg_discount_value_per_transaction
+FROM balanced_tree.sales;
+```
+|avg_discount_value_per_transaction/|
+|---|
+|10.35|
+
+#### 5. What is the percentage split of all transactions for members vs non-members?
+```sql
+SELECT
+    round(SUM(CASE WHEN member = 't' THEN 1 ELSE 0 END) * 100.0 / COUNT(*),2) AS member_percentage,
+    round(SUM(CASE WHEN member = 'f' THEN 1 ELSE 0 END) * 100.0 / COUNT(*),2) AS non_member_percentage
+FROM balanced_tree.sales;
+```
+| member_percentage | non_member_percentage |
+|-------------------|-----------------------|
+| 60.03             | 39.97                 |
+
+#### 6. What is the average revenue for member transactions and non-member transactions?
+```sql
+SELECT
+    round(AVG(CASE WHEN member = 't' THEN price * qty END),2) AS avg_member_revenue,
+    round(AVG(CASE WHEN member = 'f' THEN price * qty END),2) AS avg_non_member_revenue
+FROM balanced_tree.sales;
+```
+| avg_member_revenue | avg_non_member_revenue |
+|--------------------|------------------------|
+| 85.75              | 84.93                  |
 
 ### C. Product Analysis
 
