@@ -365,12 +365,17 @@ select
 	campaign_name,
 	COUNT(case when event_name = 'Ad Impression' then 1 end) as impression,
 	COUNT(case when event_name = 'Ad click' then 1 end) as click,
-	STRING_AGG(case when ph.product_id is not null and event_name ='Add to Cart' then page_name end,', ') within group (order by e.sequence_number) cart_products
+	STRING_AGG(
+        CASE WHEN ph.product_id IS NOT NULL AND event_name = 'Add to Cart'
+            THEN ph.page_name
+        END, 
+        ', ' ORDER BY e.sequence_number
+    ) AS cart_products
 from clique_bait.events e 
-join users u on e.cookie_id = u.cookie_id
+join clique_bait.users u on e.cookie_id = u.cookie_id
 join clique_bait.event_identifier ei on e.event_type = ei.event_type
 left join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
-left join campaign_identifier c on e.event_time between c.start_date and c.end_date
-where visit_id in (select visit_id from clique_bait.time_ where ranking = 1)
+left join clique_bait.campaign_identifier c on e.event_time between c.start_date and c.end_date
+where visit_id in (select visit_id from time_ where ranking = 1)
 group by user_id, visit_id, c.campaign_name
-order by user_id
+order by user_id;

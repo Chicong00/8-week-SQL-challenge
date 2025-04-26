@@ -462,3 +462,61 @@ from clique_bait.product_info;
 |75.93|
 
 ### C. Campaigns Analysis
+
+Generate a table that has 1 single row for every unique visit_id record and has the following columns:
+
+- `user_id`
+- `visit_id`
+- `visit_start_time`: the earliest `event_time` - for each visit
+- `page_views`: count of page views for each - visit
+- `cart_adds`: count of product cart add - events for each visit
+- `purchase`: 1/0 flag if a purchase event - exists for each visit
+- `campaign_name`: map the visit to a campaign - if the `visit_start_time` falls between the - `start_date` and `end_date`
+- `impression`: count of ad impressions for - each visit
+- `click`: count of ad clicks for each visit
+- **(Optional column)** `cart_products`: a comma separated text value with products added to the cart sorted by the order they were added to the cart (hint: use the sequence_number)
+
+```sql
+with time_ as 
+(
+select 
+	visit_id,
+	event_time, 
+	rank() over (partition by visit_id order by event_time) ranking
+from clique_bait.events
+)
+select 
+	u.user_id, e.visit_id, min(event_time) visit_start_time,
+	COUNT(case when event_name = 'Page View' then 1 end) as page_views,
+	COUNT(case when event_name = 'Add to Cart' then 1 end) as cart_adds,
+	COUNT(case when event_name = 'Purchase' then 1 end) as purchase,
+	campaign_name,
+	COUNT(case when event_name = 'Ad Impression' then 1 end) as impression,
+	COUNT(case when event_name = 'Ad click' then 1 end) as click,
+	STRING_AGG(
+        CASE WHEN ph.product_id IS NOT NULL AND event_name = 'Add to Cart'
+            THEN ph.page_name
+        END, 
+        ', ' ORDER BY e.sequence_number
+    ) AS cart_products
+from clique_bait.events e 
+join clique_bait.users u on e.cookie_id = u.cookie_id
+join clique_bait.event_identifier ei on e.event_type = ei.event_type
+left join clique_bait.page_hierarchy ph on e.page_id = ph.page_id
+left join clique_bait.campaign_identifier c on e.event_time between c.start_date and c.end_date
+where visit_id in (select visit_id from time_ where ranking = 1)
+group by user_id, visit_id, c.campaign_name
+order by user_id;
+```
+**Sample results**
+
+| user_id | visit_id | visit_start_time           | page_views | cart_adds | purchase | campaign_name                     | impression | click | cart_products                                                               |
+|---------|----------|----------------------------|------------|-----------|----------|-----------------------------------|------------|-------|-----------------------------------------------------------------------------|
+| 1       | 02a5d5   | 2020-02-26 16:57:26.260871 | 4          | 0         | 0        | Half Off - Treat Your Shellf(ish) | 0          | 0     |                                                                             |
+| 1       | 0826dc   | 2020-02-26 05:58:37.918618 | 1          | 0         | 0        | Half Off - Treat Your Shellf(ish) | 0          | 0     |                                                                             |
+| 1       | 0fc437   | 2020-02-04 17:49:49.602976 | 10         | 6         | 1        | Half Off - Treat Your Shellf(ish) | 1          | 0     | Tuna, Russian Caviar, Black Truffle, Abalone, Crab, Oyster                  |
+| 1       | 30b94d   | 2020-03-15 13:12:54.023936 | 9          | 7         | 1        | Half Off - Treat Your Shellf(ish) | 1          | 0     | Salmon, Kingfish, Tuna, Russian Caviar, Abalone, Lobster, Crab              |
+| 1       | 41355d   | 2020-03-25 00:11:17.860655 | 6          | 1         | 0        | Half Off - Treat Your Shellf(ish) | 0          | 0     | Lobster                                                                     |
+| 1       | ccf365   | 2020-02-04 19:16:09.182546 | 7          | 3         | 1        | Half Off - Treat Your Shellf(ish) | 0          | 0     | Lobster, Crab, Oyster                                                       |
+| 1       | eaffde   | 2020-03-25 20:06:32.342989 | 10         | 8         | 1        | Half Off - Treat Your Shellf(ish) | 1          | 0     | Salmon, Tuna, Russian Caviar, Black Truffle, Abalone, Lobster, Crab, Oyster |
+| 1       | f7c798   | 2020-03-15 02:23:26.312543 | 9          | 3         | 1        | Half Off - Treat Your Shellf(ish) | 0          | 0     | Russian Caviar, Crab, Oyster                                                |
