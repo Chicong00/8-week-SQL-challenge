@@ -406,6 +406,7 @@ triplet_combinations AS (
     SELECT
         tp1.txn_id,
         LEAST(tp1.prod_id, tp2.prod_id, tp3.prod_id) AS prod1,
+        --To avoid duplicate sets like (A,B,C) and (B,A,C).
         CASE
             WHEN (tp1.prod_id > tp2.prod_id AND tp1.prod_id < tp3.prod_id) OR (tp1.prod_id < tp2.prod_id AND tp1.prod_id > tp3.prod_id) THEN tp1.prod_id
             WHEN (tp2.prod_id > tp1.prod_id AND tp2.prod_id < tp3.prod_id) OR (tp2.prod_id < tp1.prod_id AND tp2.prod_id > tp3.prod_id) THEN tp2.prod_id
@@ -417,17 +418,17 @@ triplet_combinations AS (
         ON tp1.txn_id = tp2.txn_id AND tp1.prod_id < tp2.prod_id
     JOIN transaction_products tp3
         ON tp1.txn_id = tp3.txn_id AND tp2.prod_id < tp3.prod_id
-),
-combo_counts AS (
+)
+, combo_counts AS (
     SELECT
         prod1,
         prod2,
         prod3,
-        COUNT(*) AS combo_count
+        COUNT(*) AS combo_count,
+        rank() OVER (ORDER BY COUNT(*) DESC) AS combo_rank
     FROM triplet_combinations
     GROUP BY prod1, prod2, prod3
     ORDER BY combo_count DESC
-    LIMIT 1
 )
 SELECT
     p1.product_name AS product_1,
@@ -437,7 +438,9 @@ SELECT
 FROM combo_counts
 JOIN balanced_tree.product_details p1 ON combo_counts.prod1 = p1.product_id
 JOIN balanced_tree.product_details p2 ON combo_counts.prod2 = p2.product_id
-JOIN balanced_tree.product_details p3 ON combo_counts.prod3 = p3.product_id;
+JOIN balanced_tree.product_details p3 ON combo_counts.prod3 = p3.product_id
+WHERE combo_rank = 1;
+
 ```
 | product_1              | product_2                    | product_3                   | combo_count |
 |------------------------|------------------------------|-----------------------------|-------------|
