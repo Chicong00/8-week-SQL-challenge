@@ -45,3 +45,124 @@ Danny has asked for your assistance to analyse aggregated metrics for an example
 
 
 ## Question and Solution
+### A. Data Exploration and Cleansing
+
+#### 1. Update the `fresh_segments.interest_metrics` table by modifying the `month_year` column to be a date data type with the start of the month
+```sql
+ALTER TABLE fresh_segments.interest_metrics
+ALTER COLUMN month_year TYPE DATE
+USING TO_DATE(month_year, 'MM-YYYY');
+```
+month_year column after altering the datatype
+
+| month_year |
+|------------|
+| 2019-08-01 |
+| 2019-07-01 |
+| 2019-06-01 |
+| 2019-05-01 |
+| 2019-04-01 |
+| 2019-03-01 |
+| 2019-02-01 |
+| 2019-01-01 |
+| 2018-12-01 |
+| 2018-11-01 |
+| 2018-10-01 |
+| 2018-09-01 |
+| 2018-08-01 |
+| 2018-07-01 |
+
+#### 2. What is count of records in the `fresh_segments.interest_metrics` for each `month_year` value sorted in chronological order (earliest to latest) with the null values appearing first?
+```sql
+SELECT
+    month_year,
+    count(*) AS record_count
+FROM fresh_segments.interest_metrics
+GROUP BY 1
+ORDER BY 1 ASC NULLS FIRST;
+```
+| month_year | record_count |
+|------------|--------------|
+| NULL       | 1194         |
+| 2018-07-01 | 729          |
+| 2018-08-01 | 767          |
+| 2018-09-01 | 780          |
+| 2018-10-01 | 857          |
+| 2018-11-01 | 928          |
+| 2018-12-01 | 995          |
+| 2019-01-01 | 973          |
+| 2019-02-01 | 1121         |
+| 2019-03-01 | 1136         |
+| 2019-04-01 | 1099         |
+| 2019-05-01 | 857          |
+| 2019-06-01 | 824          |
+| 2019-07-01 | 864          |
+| 2019-08-01 | 1149         |
+
+#### 3. What do you think we should do with these null values in the `fresh_segments.interest_metrics`
+
+We should remove them as they are not valid records and will not be useful for our analysis.
+
+```sql
+DELETE FROM fresh_segments.interest_metrics
+WHERE month_year IS NULL;
+```
+
+#### 4. How many `interest_id` values exist in the `fresh_segments.interest_metrics` table but not in the `fresh_segments.interest_map` table? What about the other way around?
+```sql
+SELECT interest_id::integer AS interest_id_not_in_metrics
+FROM fresh_segments.interest_metrics me
+EXCEPT DISTINCT
+SELECT id
+FROM fresh_segments.interest_map ma
+```
+All the interest_id values exist in the fresh_segments.interest_metrics table also exist in the fresh_segments.interest_map
+
+#### 5. Summarise the `id` values in the `fresh_segments.interest_map` by its total record count in this table
+
+#### 6. What sort of table join should we perform for our analysis and why? Check your logic by checking the rows where `interest_id = 21246` in your joined output and include all columns from `fresh_segments.interest_metrics` and all columns from `fresh_segments.interest_map` except from the id column.
+```sql
+SELECT
+    me.*,
+    ma.interest_name,
+    ma.interest_summary,
+    ma.created_at,
+    ma.last_modified
+FROM fresh_segments.interest_metrics me
+JOIN fresh_segments.interest_map ma ON me.interest_id = ma.id
+WHERE me.interest_id = 21246;
+```
+| _month | _year | month_year | interest_id | composition | index_value | ranking | percentile_ranking | interest_name                    | interest_summary                                      | created_at          | last_modified       |
+|--------|-------|------------|-------------|-------------|-------------|---------|--------------------|----------------------------------|-------------------------------------------------------|---------------------|---------------------|
+| 7      | 2018  | 2018-07-01 | 21246       | 2.26        | 0.65        | 722     | 0.96               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 8      | 2018  | 2018-08-01 | 21246       | 2.13        | 0.59        | 765     | 0.26               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 9      | 2018  | 2018-09-01 | 21246       | 2.06        | 0.61        | 774     | 0.77               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 10     | 2018  | 2018-10-01 | 21246       | 1.74        | 0.58        | 855     | 0.23               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 11     | 2018  | 2018-11-01 | 21246       | 2.25        | 0.78        | 908     | 2.16               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 12     | 2018  | 2018-12-01 | 21246       | 1.97        | 0.7         | 983     | 1.21               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 1      | 2019  | 2019-01-01 | 21246       | 2.05        | 0.76        | 954     | 1.95               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 2      | 2019  | 2019-02-01 | 21246       | 1.84        | 0.68        | 1109    | 1.07               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 3      | 2019  | 2019-03-01 | 21246       | 1.75        | 0.67        | 1123    | 1.14               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+| 4      | 2019  | 2019-04-01 | 21246       | 1.58        | 0.63        | 1092    | 0.64               | Readers of El Salvadoran Content | People reading news from El Salvadoran media sources. | 2018-06-11 17:50:04 | 2018-06-11 17:50:04 |
+
+#### 7. Are there any records in your joined table where the `month_year` value is before the `created_at` value from the `fresh_segments.interest_map` table? Do you think these values are valid and why?
+```sql
+with cte as (
+SELECT
+    me.*,
+    ma.interest_name,
+    ma.interest_summary,
+    ma.created_at,
+    ma.last_modified
+FROM fresh_segments.interest_metrics me
+JOIN fresh_segments.interest_map ma ON me.interest_id = ma.id
+WHERE me.interest_id = 21246
+)
+SELECT * 
+FROM cte
+WHERE month_year < created_at;
+```
+The reulst show no value -> There is no month_year before created_at
+
+If the month_year values exists before created_at then they're not valid 
+=> The record in the interest_metrics represents the performance of a specific interest_id based on the client’s customer base interest measured through clicks and interactions -> You can't have user interest or engagement metrics before the interest was even defined/created.
