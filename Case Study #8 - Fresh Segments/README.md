@@ -166,3 +166,105 @@ The reulst show no value -> There is no month_year before created_at
 
 If the month_year values exists before created_at then they're not valid 
 => The record in the interest_metrics represents the performance of a specific interest_id based on the client’s customer base interest measured through clicks and interactions -> You can't have user interest or engagement metrics before the interest was even defined/created.
+
+### B. Interest Analysis
+#### 1. Which interests have been present in all `month_year` dates in our dataset?
+
+Basically, our dataset has 14 values of month_year so to retrieve the desired interests we just need to count the distinct month_year value group by interest, if the interests value equal to 14 is valid.
+
+```sql
+SELECT
+    interest_id
+FROM fresh_segments.interest_metrics me
+GROUP BY 1
+HAVING count(DISTINCT month_year) 
+    = (SELECT count(distinct month_year) FROM fresh_segments.interest_metrics);
+```
+We have 480 / 1202 interests are present in all the month_year dates.
+
+**Sample results**
+| interest_id | interest_name             |
+|-------------|---------------------------|
+| 4           | Luxury Retail Researchers |
+| 5           | Brides & Wedding Planners |
+| 6           | Vacation Planners         |
+| 12          | Thrift Store Shoppers     |
+| 15          | NBA Fans                  |
+| 16          | NCAA Fans                 |
+| 17          | MLB Fans                  |
+
+#### 2. Using this same `total_months` measure - calculate the cumulative percentage of all records starting at 14 months - which `total_months` value passes the 90% cumulative percentage value?
+
+```sql
+-- Count the total number of months for each interest_id
+WITH months_count AS (
+SELECT
+  interest_id,
+  count(DISTINCT month_year) AS total_months
+FROM fresh_segments.interest_metrics
+WHERE interest_id IS NOT NULL
+GROUP BY interest_id
+)
+-- Count the number of interest_ids for each total_months value
+, interests_count AS (
+  SELECT
+    total_months,
+    COUNT(DISTINCT interest_id) AS interest_count
+  FROM months_count
+  GROUP BY total_months
+)
+
+SELECT
+  total_months,
+  interest_count,
+ -- Create running total field using cumulative values of interest count
+  ROUND(100 * SUM(interest_count) OVER (ORDER BY total_months DESC) / 
+      (SUM(INTEREST_COUNT) OVER ()),2) AS cumulative_percentage
+FROM interests_count;
+```
+| total_months | interest_count | cumulative_percentage |
+|--------------|----------------|-----------------------|
+| 14           | 480            | 39.93                 |
+| 13           | 82             | 46.76                 |
+| 12           | 65             | 52.16                 |
+| 11           | 94             | 59.98                 |
+| 10           | 86             | 67.14                 |
+| 9            | 95             | 75.04                 |
+| 8            | 67             | 80.62                 |
+| 7            | 90             | 88.1                  |
+| 6            | 33             | 90.85                 |
+| 5            | 38             | 94.01                 |
+| 4            | 32             | 96.67                 |
+| 3            | 15             | 97.92                 |
+| 2            | 12             | 98.92                 |
+| 1            | 13             | 100                   |
+
+The interests have 6 months or above account for 90.85%. Interests exist in the range below (total_months from 5 -> 1) this benchmark should be investigated to improve the user interactions.
+
+#### 3. If we were to remove all `interest_id` values which are lower than the `total_months` value we found in the previous question - how many total data points would we be removing?
+
+We found that the cumulative percentage crosses 90% at **total_months = 6** in the previous question.
+```sql
+-- Step 1: Calculate total_months for each interest_id
+WITH months_count AS (
+  SELECT
+    interest_id,
+    COUNT(DISTINCT month_year) AS total_months
+  FROM fresh_segments.interest_metrics
+  WHERE interest_id IS NOT NULL
+  GROUP BY interest_id
+)
+
+-- Step 2: Filter out interest_ids with total_months < 6 and count them
+SELECT
+  COUNT(*) AS removed_interest_ids
+FROM months_count
+WHERE total_months < 6;
+```
+|removed_interest_ids|
+|---|
+|110|
+
+#### 4. Does this decision make sense to remove these data points from a business perspective? Use an example where there are all 14 months present to a removed `interest` example for your arguments - think about what it means to have less months present from a segment perspective.
+
+#### 5. After removing these interests - how many unique interests are there for each month?
